@@ -1,0 +1,18 @@
+id: character-id
+name: 角色名
+role: supporting
+
+core:
+  desire: ""
+  fear: ""
+  need: ""
+  secret: ""
+  contradiction: ""
+
+voice:
+  speech_style: ""
+  avoids: []
+
+relationships: {}
+
+notes: []

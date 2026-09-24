@@ -1,0 +1,4 @@
+interface:
+  display_name: "Novel Writer"
+  short_description: "Plan, draft, revise, and maintain long-form fiction projects"
+  default_prompt: "Use $novel-writer-skill to create a novel project with a configurable genre, prose style, and long-form continuity state."

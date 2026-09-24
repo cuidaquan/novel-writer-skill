@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "project": {
+    "title": "未命名小说",
+    "current_volume": 1,
+    "current_chapter": 0,
+    "last_chapter_title": "",
+    "last_chapter_summary": ""
+  },
+  "characters": {},
+  "relationships": {},
+  "plot_threads": {},
+  "foreshadowing": {},
+  "timeline": [],
+  "continuity_notes": []
+}

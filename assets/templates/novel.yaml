@@ -1,0 +1,33 @@
+title: 未命名小说
+language: zh-CN
+audience: general
+
+genre:
+  primary: urban
+  secondary: []
+
+length:
+  target_words: null
+  target_chapters: null
+
+narration:
+  pov: third-limited
+  tense: past
+  viewpoint_characters: []
+
+style:
+  tone: restrained
+  pov_distance: close
+  sentence_length: short-to-medium
+  rhythm: medium
+  dialogue_density: medium
+  exposition_density: low
+  description_density: medium
+  sensory_detail: medium
+  interiority: indirect
+  metaphor_density: low
+  humor: low
+  ending_mode: hook
+  forbidden: []
+
+content_limits: []

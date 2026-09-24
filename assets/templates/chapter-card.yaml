@@ -1,0 +1,24 @@
+chapter: 1
+title: ""
+goal: ""
+conflict: ""
+
+change:
+  plot: ""
+  character: ""
+  relationship: ""
+
+threads:
+  advance: []
+  touch: []
+
+foreshadowing:
+  plant: []
+  pay_off: []
+
+required_facts: []
+forbidden: []
+
+ending:
+  mode: hook
+  hook: ""
