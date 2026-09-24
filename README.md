@@ -6,6 +6,7 @@
 
 - 用 `novel.yaml` 定义主类型、混合类型、叙事视角、语气、句式、对话密度、描写密度、节奏与禁用表达。
 - 用章节控制卡明确每章的目标、冲突、状态变化、伏笔和章末牵引。
+- 用标准库脚本按章装配配置、状态、纲要、近期正文和指定人物/世界观资料，减少长篇续写时的无关上下文。
 - 用 `state/state.json` 保存长篇连续性事实，并通过事务脚本逐章提交。
 - 支持悬疑、惊悚、言情、奇幻、仙侠、科幻、历史、都市等题材，也允许组合。
 - 改稿时按结构、人物、对话、描写、语言和连续性的顺序检查。
@@ -23,6 +24,15 @@ third-person limited POV, high dialogue density, and low exposition density.
 
 ```bash
 python3 scripts/init_novel.py /path/to/my-novel --title "小说名"
+```
+
+生成下一章上下文包：
+
+```bash
+python3 scripts/build_context.py /path/to/my-novel \
+  --character protagonist-id \
+  --world current-location \
+  --output /tmp/chapter-context.md
 ```
 
 每章完成后可提交状态事务：

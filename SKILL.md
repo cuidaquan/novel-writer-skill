@@ -10,7 +10,7 @@ description: Create, continue, or revise fiction projects—especially novels an
 ## 选择工作模式
 
 - **新建小说**：先读取 [references/workflow.md](references/workflow.md) 的初始化流程。需要实际创建项目目录时，优先运行 `scripts/init_novel.py`，再按用户要求补充设定。
-- **续写章节**：先读 `novel.yaml`、`state/state.json`、当前卷纲/章纲和最近 1–3 章；再读 [references/chapter-cards.md](references/chapter-cards.md) 与 [references/continuity-state.md](references/continuity-state.md)。
+- **续写章节**：先读 [references/context-assembly.md](references/context-assembly.md) 组装当前章需要的上下文，再读 [references/chapter-cards.md](references/chapter-cards.md) 与 [references/continuity-state.md](references/continuity-state.md)。项目化续写可用 `scripts/build_context.py` 生成可审查的上下文包。
 - **定义或调整文风**：读 [references/style-system.md](references/style-system.md)。把文风拆成可描述的参数，不把某个作者姓名当作文风配置本身。
 - **选择或混合题材**：读 [references/genre-system.md](references/genre-system.md)。只加载当前题材真正需要的约束。
 - **改稿/审稿**：读 [references/revision-quality.md](references/revision-quality.md)，先修剧情和场景，再修语言。
