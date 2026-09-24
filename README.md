@@ -1,6 +1,6 @@
 # novel-writer-skill
 
-面向 Codex 的长篇小说创作 Skill。它把题材、文风、POV、节奏等创作参数与人物、伏笔、剧情线、时间线等连续性事实分开管理，适合从开书到多章节续写的项目化创作。
+面向 AI Agent 的长篇小说创作 Skill。它把题材、文风、POV、节奏等创作参数与人物、伏笔、剧情线、时间线等连续性事实分开管理，适合从开书到多章节续写的项目化创作。
 
 ## 能做什么
 
@@ -13,7 +13,7 @@
 
 ## 使用
 
-把本仓库作为 Codex Skill 使用，或将目录复制/链接到 Codex skills 目录。可直接调用：
+把本仓库作为 Agent Skill 使用；在支持 Skill 加载机制的环境中，可将目录安装、复制或链接到对应的 skills 目录。调用示例：
 
 ```text
 Use $novel-writer-skill to create a 60-chapter urban mystery novel with a restrained tone,
