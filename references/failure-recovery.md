@@ -14,6 +14,25 @@
 
 恢复：错误不会写入状态或事务。按提示修正事务 JSON 后重新提交。常见原因：`expected_chapter`/`chapter` 不匹配、重复时间线 id、揭示时间与章卡不符。
 
+## 提交被 BLOCK 拦下
+
+症状：`state_commit.py` 报 `chapter N has blocking review findings`。
+
+恢复：先修正文里的可复现问题（空正文、`TO DO`、未闭合引号、悬空结尾、章卡必填项缺失）。若该命中是刻意的，带记录放行：
+
+```bash
+python3 scripts/state_commit.py <project>/state/state.json <tx.json> \
+  --allow placeholder --reason "反派字条上确实是 TODO"
+```
+
+放行会写进事务的 `acknowledged_blocks`，`project_check.py` 以 WARN 显示。`--allow` 只对当章真实命中的 check 生效，且必须给 `--reason`；不要绕过脚本改事务。
+
+## 完结被延后的承诺拦下
+
+症状：`project_check.py --complete` 报 `unfulfilled genre payoff at completion: chapter N still defers ...`。
+
+恢复：兑现它——后继章卡写相同的 `payoff.id`（或完全相同的 `expected`）并把 `status` 设为 `fulfilled`；确实不打算兑现时把 `status` 设为 `dropped` 并写 `reason`。脚本只要求有明确处理结果，不判断回报写得好不好。
+
 ## 事务与状态不一致
 
 症状：`project_check.py` 报 `state/state.json differs from replayed transactions`。

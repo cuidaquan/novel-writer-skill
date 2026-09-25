@@ -48,12 +48,13 @@
 
 ```yaml
 payoff:
+  id: key-clue
   expected: 给出关于钥匙的可靠线索
   status: deferred
   reason: 本章需要先处理证人的安全
 ```
 
-`status` 取 `fulfilled` 或 `deferred`，延后必须写 `reason`。阶段回顾运行：
+`status` 取 `fulfilled`、`deferred` 或 `dropped`，延后或放弃必须写 `reason`。可选的 `id` 让后续章节认领同一条承诺，避免改了措辞就被当成两条；`dropped` 表示作者已明确决定不兑现。完结时仍标为 `deferred` 的承诺会被 `--complete` 列出。阶段回顾运行：
 
 ```bash
 python3 scripts/promise_report.py /path/to/novel --deferred-streak 3

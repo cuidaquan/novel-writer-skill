@@ -51,7 +51,7 @@ novel-project/
 - `revelations.touch`、`revelations.reveal`：已有真相 id 列表；`reveal` 必须在同章事务中标为读者已知，事务里的读者揭示也必须在章卡出现。
 - `style_modules`：已知场景模块 id 列表，可覆盖本书的 `style.modules`。
 - `required_facts`、`forbidden`：字符串列表。
-- `payoff.expected`、`payoff.status`、`payoff.reason`：可选类型回报；`status` 取 `fulfilled` 或 `deferred`，延后时 `reason` 必填。
+- `payoff.expected`、`payoff.status`、`payoff.reason` 与可选 `payoff.id`：类型回报。`status` 取 `fulfilled`、`deferred` 或 `dropped`；`deferred`/ `dropped` 必须写 `reason`。`id` 用来跨章认领同一条承诺；缺省时按 `expected` 完全相同分组。
 - `ending.mode`、`ending.hook`：字符串。
 
 ## 状态 state/initial.json 与 state/state.json
@@ -78,6 +78,7 @@ novel-project/
 - `timeline_events`：事件对象列表，`id` 非空且全局唯一，章号隐含为本章。
 - `continuity_notes_add`：非空字符串列表。
 - `handoff`：`carry_over`、`notes`（可选）。
+- `acknowledged_blocks`：可选列表，元素为 `{check, reason}`，记录作者用 `--allow` 放行的审查项。只存事务日志，不进 state。
 
 旧章改动后必须重放：先确认 `initial.json` 可信，逐章核对事务，再 `state_rebuild.py --write`。
 
@@ -87,7 +88,7 @@ novel-project/
 - `style_report.py`、`handoff_report.py`、`promise_report.py`：只读、advisory；成功退出 0，输入错误退出 2。
 - `style_profile.py`：样本不足时输出 `INSUFFICIENT` 且退出 1；成功退出 0，输入错误退出 2。
 - `project_check.py`：有问题退出 1，否则 0；`ERROR` 为阻断，`WARN` 为提示。
-- `state_commit.py`：非法事务不改动状态，退出 1；成功打印提交章号。
+- `state_commit.py`：非法事务不改动状态，退出 1；章节有未放行的 BLOCK 审查项时拒绝写入；`--allow <check> --reason <text>` 可带记录放行；成功打印提交章号。
 
 ## 校验层级
 
@@ -98,7 +99,12 @@ novel-project/
 5. 连续性：`state_rebuild.py`、`handoff_report.py`。
 6. 风格与类型：`style_report.py`、`style_profile.py`、`promise_report.py`。
 
+## 上下文预算
+
+- `build_context.py --compact-state` 分三层：本章引用、`handoff.carry_over` 与知识边界保完整；其余活跃条目降为 `active_pressure` 摘要，默认最多 40 条（`--active-limit`）；超出部分只计数并写入省略摘要。
+- `--max-chars` 超限时不加 `--fit` 会失败并列出最大来源；`--fit` 依次把摘要降到 20/10/5/0 条，再把时间线、备注降到 10/5/2/0，最后从旧到新丢弃近期章节，并在清单里记录裁剪内容。
+
 ## 错误级别
 
-- 阻断：结构、状态、事务、章卡必填项、承诺缺失、揭示时间、完结门禁、写前缺项。
-- 提示：字数偏差、重复开头/结尾、文风偏移、交接漂移、连续延后、知识边界提示。
+- 阻断：结构、状态、事务、章卡必填项、审查 BLOCK（含硬占位标记）、承诺缺失、揭示时间、完结门禁、写前缺项。
+- 提示：字数偏差、重复开头/结尾、文风偏移、交接漂移、连续延后、知识边界提示、已放行的审查项。

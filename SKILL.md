@@ -37,7 +37,7 @@ description: Create, continue, or revise fiction projects—especially novels an
 
 正文只写角色当下能够感知、推断或误解的内容。解释性背景优先拆进动作、选择、对话、环境和后果中，避免用旁白代替戏剧过程。
 
-正文完成后先用 `scripts/review_chapter.py` 做只读审查，修掉 `BLOCK` 项，再用 `scripts/style_report.py` 查看文风偏移。场景因果、POV/知识边界、角色行为和类型承诺仍须人工核对，脚本不能证明文学质量；完整顺序见 [references/post-draft-review.md](references/post-draft-review.md)。核对后按最终正文生成事务 JSON，用 `scripts/state_commit.py` 更新状态；提交前核对事务只写正文真实发生的变化。每章运行 `scripts/project_check.py`；整本交付前运行 `scripts/project_check.py --complete`，并人工核对结构、人物弧和类型承诺。
+正文完成后先用 `scripts/review_chapter.py` 做只读审查，修掉 `BLOCK` 项，再用 `scripts/style_report.py` 查看文风偏移。场景因果、POV/知识边界、角色行为和类型承诺仍须人工核对，脚本不能证明文学质量；完整顺序见 [references/post-draft-review.md](references/post-draft-review.md)。核对后按最终正文生成事务 JSON，用 `scripts/state_commit.py` 更新状态；提交前核对事务只写正文真实发生的变化。提交时 `state_commit.py` 会重跑确定性审查：未放行的 `BLOCK` 会拒绝写入，刻意命中用 `--allow <check> --reason <text>` 留痕放行；`project_check.py` 复核已提交章节，`--complete` 还会列出仍标为延后的类型承诺。每章运行 `scripts/project_check.py`；整本交付前运行 `scripts/project_check.py --complete`，并人工核对结构、人物弧和类型承诺。
 
 每章事务可用 `handoff.carry_over` 记录下一章必须承接、且仍在 `plot_threads` 或 `foreshadowing` 中活跃的条目；`scripts/handoff_report.py` 只读报告显式承接、活跃压力与长期未推进项，`project_check.py` 会核对章卡承诺是否落入事务。
 

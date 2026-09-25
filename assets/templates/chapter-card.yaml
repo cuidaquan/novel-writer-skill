@@ -34,9 +34,10 @@ required_facts: []
 forbidden: []
 
 # payoff:                  # optional genre payoff for this chapter
+#   id: ""                 # optional id so later chapters can claim the same promise
 #   expected: ""
-#   status: fulfilled      # fulfilled | deferred
-#   reason: ""             # required when status is deferred
+#   status: fulfilled      # fulfilled | deferred | dropped
+#   reason: ""             # required when status is deferred or dropped
 
 ending:
   mode: hook

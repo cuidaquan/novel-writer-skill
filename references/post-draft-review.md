@@ -20,6 +20,19 @@ python3 scripts/review_chapter.py /path/to/novel --style      # 审查后附文�
 
 `style_report.py` 把本章的句长、段落长度、对话比例和重复开头/结尾，与最近已定稿章节的合并样本对照。报告会写明取样范围、指标定义和阈值；样本不足时明确写“无基线”，不虚构结论。偏移只是提示，不用单一分数替代审稿。
 
+## 提交门禁与带记录放行
+
+`state_commit.py` 在写入前会对该章重跑确定性审查：有未放行的 `BLOCK`（空正文、硬占位标记、未闭合引号、悬空结尾、章卡必填项缺失）就拒绝写入，事务与状态都不变。`project_check.py` 也会复核已提交章节，未放行的 `BLOCK` 是错误，因此 `--complete` 同样会拦下。
+
+命中是刻意的（例如反派字条上真的写着 `TO DO`）时，带理由放行：
+
+```bash
+python3 scripts/state_commit.py <project>/state/state.json <tx.json> \
+  --allow placeholder --reason "反派字条上确实是 TODO"
+```
+
+放行记录写进事务的 `acknowledged_blocks`，`project_check.py` 以 WARN 显示。`--allow` 只对当章真实命中的 check 生效，且必须给 `--reason`。
+
 ## 三层核对顺序
 
 1. **确定性问题**：先运行 `review_chapter.py`，修掉所有 `BLOCK`。

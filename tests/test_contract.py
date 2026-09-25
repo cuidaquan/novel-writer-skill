@@ -52,9 +52,10 @@ class ContractTests(unittest.TestCase):
         self.assertIn("schema_version must be 1", result.stdout)
 
     def test_version_and_changelog_agree(self) -> None:
-        self.assertEqual((ROOT / "VERSION").read_text(encoding="utf-8").strip(), "1.0.0")
+        version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+        self.assertRegex(version, r"^\d+\.\d+\.\d+$")
         changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-        self.assertIn("## 1.0.0", changelog)
+        self.assertIn(f"## {version}", changelog)
 
     def test_skill_modes_and_platform_neutral_description(self) -> None:
         skill = (ROOT / "SKILL.md").read_text(encoding="utf-8")

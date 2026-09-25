@@ -17,6 +17,9 @@
 - `--compact-state` 优先装配 POV、章卡引用、活跃压力与知识边界，并给出省略摘要；`--fit` 可在预算内裁剪。
 - 用 `style_profile.py` 从定稿章节或样章提取可复核画像并建议文风参数；`build_context.py --style-anchor` 可把简短观测锚点放进上下文。
 - 章卡可用 `payoff` 记录类型回报，`promise_report.py` 提示连续延后，并在悬疑/言情下分别追踪信息控制与关系推进。
+- 提交前重跑确定性审查，未放行的 BLOCK 会拒绝写入；刻意命中可用带理由的 `--allow` 放行并留痕，完结校验会复核已提交章节。
+- 完结时收口类型承诺：仍标为延后的承诺会被 `--complete` 列出，`dropped`（需理由）视为作者已明确放弃。
+- 精简上下文分层：本章引用与交接承诺保完整，其余活跃条目按上限摘要；`--active-limit` 可控，`--fit` 逐级裁剪。
 - 写正文前可分别检查整本规划或连载当前阶段；未就绪的章卡不能生成下一章上下文。
 - 支持悬疑、惊悚、言情、奇幻、仙侠、科幻、历史、都市等题材，也允许组合。
 - 改稿时按结构、人物、对话、描写、语言和连续性的顺序检查。
@@ -33,7 +36,7 @@ third-person limited POV, high dialogue density, and low exposition density.
 ## 按工作模式的最短路径
 
 - **短篇正文**：用户只要正文时直接写，不必建项目；需要文件化时可建单章项目走整本流程。
-- **新书整本**：`init_novel.py` → 填 `novel.yaml`、总纲与章卡 → `project_check.py --preflight book` → 每章 `build_context.py` → 写正文 → `review_chapter.py` → `state_commit.py` → `project_check.py`，最后 `--complete`。
+- **新书整本**：`init_novel.py` → 填 `novel.yaml`、总纲与章卡 → `project_check.py --preflight book` → 每章 `build_context.py` → 写正文 → `review_chapter.py` → `state_commit.py`（未放行的 BLOCK 会拒绝提交）→ `project_check.py`，最后 `--complete`。
 - **连载续写**：确认当前阶段纲后 `project_check.py --preflight serial` → `build_context.py --compact-state` → 写正文 → `review_chapter.py` → `state_commit.py` → `project_check.py`；阶段回顾加 `handoff_report.py` 与 `promise_report.py`。
 - **改稿/审稿**：先 `review_chapter.py`（必要时 `--style`）与 `style_report.py`，再按 [改稿顺序](references/revision-quality.md) 人工核对；步骤见 [写后审查](references/post-draft-review.md)。
 - **重写旧章**：`state_rebuild.py --through N-1` 取快照 → `build_context.py --chapter N --state ...` → 改正文与事务 → `state_rebuild.py --write` → `project_check.py`。
@@ -85,7 +88,7 @@ python3 scripts/project_check.py /path/to/my-novel
 
 ## 支持环境
 
-- 当前版本 1.0.0；变更见 [CHANGELOG.md](CHANGELOG.md)，公开字段见 [项目契约](references/project-contract.md)，已知限制见 [已知限制](references/known-limitations.md)。
+- 当前版本 1.1.0；变更见 [CHANGELOG.md](CHANGELOG.md)，公开字段见 [项目契约](references/project-contract.md)，已知限制见 [已知限制](references/known-limitations.md)。
 - Python 3.9 及以上；脚本只用标准库，不安装第三方包。
 - 路径处理使用 `pathlib`，展示路径统一用正斜杠；Windows 上命令分隔符与本地路径写法需按 shell 调整。
 - 自动化测试在 macOS/POSIX 上运行；Windows 未纳入本仓库的自动化验证，限制如实标注，不以文档代替验证。
