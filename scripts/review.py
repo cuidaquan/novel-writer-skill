@@ -28,6 +28,9 @@ HARD_PLACEHOLDER_PATTERNS = (
     ("marker", re.compile(r"\bTODO\b|\bTBD\b|\bFIXME\b|\bXXX\b", re.IGNORECASE)),
     ("template", re.compile(r"\{\{|\}\}|<!--|-->")),
     ("unfinished", re.compile(r"待补|待写|待填|待展开|此处补|此处展开")),
+    # Chinese drafts mark a hole with a short parenthetical direction instead of a
+    # keyword: （后面接浴室）（此处略）（下文补）. Observed slipping past the gate.
+    ("draft-note", re.compile(r"[（(](?:待|后面|后文|下文|此处|这里|接下|接着|之后再|补写|另起)[^）)]{0,10}[）)]")),
 )
 
 # Words that also occur in ordinary prose ("结果待定。"). They stay advisory so the

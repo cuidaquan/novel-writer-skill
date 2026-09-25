@@ -2,6 +2,9 @@
 
 版本对应 .doc/roadmap-v0.6-v1.0.md 的路线。公开字段契约见 [references/project-contract.md](references/project-contract.md)。
 
+## 1.4.3
+- 中文稿的括注式草稿指令纳入提交门禁：`（后面接浴室）`、`（此处略）`、`（下文补）` 这类用括号标出的空洞此前不在硬标记表里，能一路通过审查与提交。现在识别为 `placeholder` 的 `draft-note` 规则并阻断提交；确认是正文内容时用 `--allow placeholder --reason ...` 带记录放行。来源是 11 章项目里一次替换残留。
+
 ## 1.4.2
 - 章卡伏笔与事务对齐升级：`foreshadowing.plant` 要求同章事务把该条改成 `planted` 或 `active`，`pay_off` 要求改成 `resolved` 或 `dropped` 并把 `resolved_chapter` 写成当前章。此前只要求"事务里出现过一条更新记录"，正文埋了但状态没记会静默通过，直到完结门禁才暴露。
 - 章零快照非法时不再清空事务列表：`project_check.py` 把回放失败降为 WARN，逐章事务检查照常运行，也不再对受牵连的章节数不一致建议"运行 state_rebuild.py --write"，避免把人引向重写快照。来源是给 10 章项目补写初始状态时观察到的连环误报。

@@ -140,6 +140,14 @@ class ChapterReview(ReviewTestCase):
         self.assertIn("[empty-body]", result.stdout)
         self.assertIn("chapter-0001.md:1", result.stdout)
 
+    def test_chinese_draft_notes_are_blocking(self) -> None:
+        """A parenthetical hole marker must not pass as drafted prose."""
+        self.write_body(1, "# 第一章\n\n他把伞收起来。\n\n（后面接浴室）\n")
+        result = run_script("review_chapter.py", self.project, "--chapter", 1, ok=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("[placeholder]", result.stdout)
+        self.assertIn("draft-note", result.stdout)
+
     def test_placeholder_lines_are_reported_with_numbers(self) -> None:
         self.write_body(1, "# 第一章\n\n他把伞收起来。\nTODO\n待补\n")
         result = run_script("review_chapter.py", self.project, "--chapter", 1, ok=False)
