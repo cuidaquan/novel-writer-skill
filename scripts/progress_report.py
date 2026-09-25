@@ -86,13 +86,18 @@ def main() -> int:
     print(f"- Average per committed chapter: {average}")
     if target_chapters:
         remaining = max(0, target_chapters - current)
-        projected = round(average * target_chapters)
-        verdict = "meets the target" if target_words and projected >= target_words else "below the target"
         print(f"- Remaining chapters: {remaining}")
-        if target_words:
-            print(f"- Projected words at the current pace: {projected} ({verdict})")
-        else:
-            print(f"- Projected words at the current pace: {projected}")
+        if remaining:
+            projected = round(average * target_chapters)
+            verdict = "meets the target" if target_words and projected >= target_words else "below the target"
+            if target_words:
+                print(f"- Projected words at the current pace: {projected} ({verdict})")
+            else:
+                print(f"- Projected words at the current pace: {projected}")
+        elif target_words:
+            shortfall = target_words - total_words
+            verdict = "meets the target" if shortfall <= 0 else f"{shortfall} short of the target"
+            print(f"- Every planned chapter is written; final total {total_words} ({verdict})")
     below = [(number, words, target) for number, words, target in rows if target and words < target * 0.8]
     print(f"- Committed chapters below 80% of their target: {len(below)}")
     print()

@@ -32,7 +32,7 @@ style:
 - `pov_distance`：`close` 更贴近角色即时感受；`medium` 允许有限概括；`distant` 更适合史诗或群像。
 - `sentence_length`：控制主要句长和阅读速度，不要求每句一致。
 - `rhythm`：决定段落推进速度、停顿频率和场景切换密度。
-- `dialogue_density`：决定对话在场景中的占比。
+- `dialogue_density`：决定对话在场景中的占比。报告按“含引号的行，或以说话标签（`她说，`）开头的行”统计，因此不使用引号的对话体也会被计入。
 - `exposition_density`：控制直接说明背景设定的程度。
 - `description_density`：控制环境、外貌、动作细节的篇幅。
 - `interiority`：`direct` 可直接写心理；`indirect` 主要通过动作、感官和选择表现。

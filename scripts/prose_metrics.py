@@ -15,6 +15,10 @@ SENTENCE_SPLIT = re.compile(r"[。！？!?…]+")
 DIALOGUE_MARK = re.compile(r"[“”「」『』\"]")
 WHITESPACE = re.compile(r"\s+")
 OPENING_PREFIX = re.compile(r"^[#>\-*\s\d.、]+")
+# A leading speech tag names the speaker, not the paragraph opening. Without
+# stripping one, dialogue-heavy prose reports "我说，"/"她说，"/"他问，你" as
+# repeated openings while the content that actually varies is never compared.
+SPEECH_TAG = re.compile(r"^[\u4e00-\u9fff]{1,4}(?:说|问|答|道|喊|叫|笑)(?:道)?[我你他她它咱您]?[，,：:]")
 TRAILING_TERMINAL = re.compile(r"[\s。！？!?…”’」』\"'）)】\]]+$")
 
 OPENING_LENGTH = 4
@@ -62,14 +66,36 @@ def sentences(text: str) -> list[tuple[int, str]]:
     return result
 
 
+def is_dialogue_line(line: str) -> bool:
+    """Report whether a line carries speech.
+
+    Chinese fiction often drops the quotation marks and marks speech with a tag
+    such as "她说，". Counting quote marks alone reports such a book as having no
+    dialogue at all, which then proposes a wrong dialogue_density.
+    """
+    compact = WHITESPACE.sub("", OPENING_PREFIX.sub("", line))
+    return bool(DIALOGUE_MARK.search(line)) or bool(SPEECH_TAG.match(compact))
+
+
 def opening_signature(line: str) -> str:
     compact = WHITESPACE.sub("", OPENING_PREFIX.sub("", line))
+    compact = SPEECH_TAG.sub("", compact, count=1)
+    # A paragraph no longer than the opening window has no opening distinct
+    # from its content; comparing whole one-line replies such as "嗯。" only
+    # reports that the characters repeat, which the author already sees.
+    if len(compact) <= OPENING_LENGTH:
+        return ""
     return compact[:OPENING_LENGTH]
 
 
 def ending_signature(line: str) -> str:
     compact = WHITESPACE.sub("", OPENING_PREFIX.sub("", line))
+    compact = SPEECH_TAG.sub("", compact, count=1)
     compact = TRAILING_TERMINAL.sub("", compact)
+    # Same rule as the opening: a reply shorter than the window is all there is,
+    # so there is no closing beat to compare across paragraphs.
+    if len(compact) <= ENDING_LENGTH:
+        return ""
     return compact[-ENDING_LENGTH:]
 
 
@@ -163,7 +189,7 @@ def metrics(text: str) -> dict:
     sentence_items = sentences(text)
     paragraph_lengths = [compact_length(line) for _, line in lines]
     sentence_lengths = [compact_length(sentence) for _, sentence in sentence_items]
-    dialogue_lines = [number for number, line in lines if DIALOGUE_MARK.search(line)]
+    dialogue_lines = [number for number, line in lines if is_dialogue_line(line)]
     return {
         "characters": len(text),
         "words": count_words(text),

@@ -17,6 +17,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+sys.path.insert(0, str(ROOT / "scripts"))
+
+import prose_metrics  # noqa: E402  (needs the script directory on sys.path)
+
 LONG_LINES = [
     "夜色像一层没有边缘的布，缓慢地覆盖了旧城区的屋顶和狭窄巷道。",
     "他沿着潮湿的台阶向下走，每一步都能听见鞋底与石面摩擦的细碎声响。",
@@ -185,6 +189,67 @@ class StyleCalibration(unittest.TestCase):
         report = self.report(self.build("habits-report", LONG_LINES, LONG_LINES))
         self.assertIn("## Habits (chapter)", report)
         self.assertIn("CJK type-token ratio", report)
+
+
+class SpeechTagOpenings(unittest.TestCase):
+    """A leading speech tag names the speaker, not the paragraph opening.
+
+    Before v1.4.1 these tags were part of the opening signature, so ordinary
+    Chinese dialogue-heavy prose reported "我说，"/"她说，"/"他问，你" as
+    repeated openings while the content that actually varied was never compared.
+    """
+
+    def test_speech_tag_is_skipped_when_signalling_the_opening(self) -> None:
+        self.assertEqual(prose_metrics.opening_signature("我说，今天风真大。"), "今天风真")
+        self.assertEqual(prose_metrics.opening_signature("她问我，你从哪儿来。"), "你从哪儿")
+        self.assertEqual(prose_metrics.opening_signature("老板说：这个不要钱。"), "这个不要")
+
+    def test_narrative_openings_keep_their_signature(self) -> None:
+        self.assertEqual(prose_metrics.opening_signature("我说完想了想，又改了口。"), "我说完想")
+        self.assertEqual(prose_metrics.opening_signature("他站在门口，看着里面的灯。"), "他站在门")
+
+    def test_tagged_dialogue_with_varied_content_is_not_a_repeat(self) -> None:
+        lines = ["我说，今天风真大。", "她问我，你从哪儿来。", "老板说：这个不要钱。", "我说，好，几点。"]
+        signatures = [(number, prose_metrics.opening_signature(line)) for number, line in enumerate(lines, 1)]
+        self.assertEqual(prose_metrics.repeated_signatures(signatures), [])
+
+    def test_one_line_replies_have_no_opening_to_compare(self) -> None:
+        self.assertEqual(prose_metrics.opening_signature("我说，嗯。"), "")
+        self.assertEqual(prose_metrics.opening_signature("他点头。"), "")
+        self.assertEqual(prose_metrics.opening_signature("她说完这句话就上楼去了。"), "她说完这")
+
+    def test_one_line_replies_are_not_a_repeated_opening(self) -> None:
+        lines = ["我说，嗯。", "她说，嗯。", "我说，好。", "她说，行。"]
+        signatures = [(number, prose_metrics.opening_signature(line)) for number, line in enumerate(lines, 1)]
+        self.assertEqual(prose_metrics.repeated_signatures(signatures), [])
+
+    def test_unquoted_dialogue_is_counted_as_speech(self) -> None:
+        self.assertTrue(prose_metrics.is_dialogue_line("“你从哪儿来？”她问。"))
+        self.assertTrue(prose_metrics.is_dialogue_line("她说，你从哪儿来。"))
+        self.assertFalse(prose_metrics.is_dialogue_line("她说这两个字的时候看着前面，我没多想。"))
+
+    def test_dialogue_ratio_counts_unquoted_speech(self) -> None:
+        text = "\n\n".join(
+            ["她说，今天风大。", "他推开门走进来，身上全是雨。", "我说，那你别出去了。", "窗外的树被风吹得乱晃。"]
+        )
+        self.assertEqual(prose_metrics.metrics(text)["dialogue_line_ratio"], 0.5)
+
+    def test_short_tagged_replies_have_no_ending_to_compare(self) -> None:
+        self.assertEqual(prose_metrics.ending_signature("我说，嗯。"), "")
+        self.assertEqual(prose_metrics.ending_signature("她点头。"), "")
+        self.assertEqual(
+            prose_metrics.ending_signature("她把灯关了，说这件事以后再说吧。"), "后再说吧"
+        )
+
+    def test_short_tagged_replies_are_not_a_repeated_ending(self) -> None:
+        lines = ["我说，嗯。", "她说，嗯。", "我说，好。", "她说，行。"]
+        signatures = [(number, prose_metrics.ending_signature(line)) for number, line in enumerate(lines, 1)]
+        self.assertEqual(prose_metrics.repeated_signatures(signatures), [])
+
+    def test_tagged_dialogue_with_repeated_content_is_still_a_repeat(self) -> None:
+        lines = ["我说，这事儿不好办。"] * 3
+        signatures = [(number, prose_metrics.opening_signature(line)) for number, line in enumerate(lines, 1)]
+        self.assertEqual([item[0] for item in prose_metrics.repeated_signatures(signatures)], ["这事儿不"])
 
 
 if __name__ == "__main__":

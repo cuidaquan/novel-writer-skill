@@ -42,7 +42,7 @@ third-person limited POV, high dialogue density, and low exposition density.
 ## 按工作模式的最短路径
 
 - **短篇正文**：用户只要正文时直接写，不必建项目；需要文件化时可建单章项目走整本流程。
-- **新书整本**：`init_novel.py` → 填 `novel.yaml`、总纲与章卡 → `project_check.py --preflight book` → 每章 `build_context.py` → 写正文 → `review_chapter.py` → `state_commit.py`（未放行的 BLOCK 会拒绝提交）→ `project_check.py`，最后 `--complete`。
+- **中篇/新书整本**：要求完整故事或项目文件时都按整本处理：`init_novel.py` → 填 `novel.yaml`、总纲与章卡 → `project_check.py --preflight book` → 每章 `build_context.py` → 写正文 → `review_chapter.py` → `state_commit.py`（未放行的 BLOCK 会拒绝提交）→ `project_check.py`，阶段复盘用 `stage_review.py` 汇总，最后 `--complete`。
 - **连载续写**：确认当前阶段纲后 `project_check.py --preflight serial` → `build_context.py --compact-state` → 写正文 → `review_chapter.py` → `state_commit.py` → `project_check.py`；阶段回顾加 `handoff_report.py` 与 `promise_report.py`。
 - **改稿/审稿**：先 `review_chapter.py`（必要时 `--style`）与 `style_report.py`，再按 [改稿顺序](references/revision-quality.md) 人工核对；步骤见 [写后审查](references/post-draft-review.md)。
 - **重写旧章**：`state_rebuild.py --through N-1` 取快照 → `build_context.py --chapter N --state ...` → 改正文与事务 → `state_rebuild.py --write` → `project_check.py`。

@@ -23,6 +23,10 @@
 
 要求完整成书时继续读 [full-book-workflow.md](full-book-workflow.md)。
 
+### 中篇与完整单本
+
+“中篇”描述的是篇幅，不代表只交付开篇或跳过项目门禁。用户要求完整故事、按章写作或需要项目文件时，按整本创作流程处理：先确定总字数与章节数，再准备全书章卡并运行 `project_check.py --preflight book`；正文完成后运行 `project_check.py --complete`。只有用户明确只要试写、开篇或大纲时，才缩小交付范围。
+
 ## 续写
 
 续写前按 [context-assembly.md](context-assembly.md) 选择当前章节需要的上下文。控制卡完成后，可用 `scripts/build_context.py` 生成一次性的上下文包；正文、配置和状态文件发生变化时重新生成。

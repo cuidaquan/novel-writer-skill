@@ -10,6 +10,7 @@ description: Create, continue, or revise fiction projects—especially novels an
 ## 选择工作模式
 
 - **短篇正文**：按 [references/workflow.md](references/workflow.md) 的轻量流程写作；用户没有要求项目文件时，直接交付正文。
+- **中篇或其他完整单本小说**：即使篇幅短于常见长篇，只要用户要完整故事或项目文件，就按整本项目处理；先读 [references/workflow.md](references/workflow.md) 与 [references/planning-preflight.md](references/planning-preflight.md)，准备完整章卡并运行 `project_check.py --preflight book`，完稿后运行 `--complete`。
 - **新建项目或整本小说**：先读 [references/workflow.md](references/workflow.md) 与 [references/planning-preflight.md](references/planning-preflight.md)；要求完整成书时还须读 [references/full-book-workflow.md](references/full-book-workflow.md)，按章推进并通过完成校验。
 - **续写章节**：先读 [references/context-assembly.md](references/context-assembly.md) 装配上下文，再读 [references/chapter-cards.md](references/chapter-cards.md)、[references/continuity-state.md](references/continuity-state.md) 与 [references/handoff-continuity.md](references/handoff-continuity.md)，用 `scripts/handoff_report.py` 查看下一章必须承接的压力。
 - **重写旧章节**：读 [references/continuity-state.md](references/continuity-state.md)，用 `scripts/state_rebuild.py` 得到旧章之前的事实快照；重写后核对、重放后续事务。
