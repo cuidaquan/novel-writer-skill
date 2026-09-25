@@ -16,7 +16,7 @@ description: Create, continue, or revise fiction projects—especially novels an
 - **定义或调整文风**：读 [references/style-system.md](references/style-system.md)。把文风拆成可描述的参数，不把某个作者姓名当作文风配置本身；可用 `scripts/style_profile.py` 从定稿章节或样章提取可复核画像。
 - **选择或混合题材**：读 [references/genre-system.md](references/genre-system.md)。只加载当前题材真正需要的约束；章卡可用 `payoff` 记录类型回报，`scripts/promise_report.py` 跟踪连续延后。
 - **阶段复盘或查看进度**：读 [references/stage-reporting.md](references/stage-reporting.md)，用 `scripts/progress_report.py` 看进度与预算、`scripts/state_view.py` 生成派生状态视图、`scripts/stage_review.py` 聚合阶段报告。
-- **改稿/审稿**：先按 [references/post-draft-review.md](references/post-draft-review.md) 做只读的写后审查（`scripts/review_chapter.py`、`scripts/style_report.py`），再读 [references/revision-quality.md](references/revision-quality.md)，先修剧情和场景，再修语言。
+- **改稿/审稿**：先按 [references/post-draft-review.md](references/post-draft-review.md) 做只读的写后审查（`scripts/review_chapter.py`、`scripts/style_report.py`），再读 [references/revision-quality.md](references/revision-quality.md)，先修剧情和场景，再修语言。需要套路扫描时按 [references/prose-lint.md](references/prose-lint.md) 配置规则；命中只作提示，不阻断提交。
 
 ## 配置优先级
 
