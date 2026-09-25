@@ -38,4 +38,4 @@
 3. **连续性**：时间、地点、物品、伤势、关系、知识边界是否一致；POV 角色是否只使用了 `state.revelations.known_by` 允许的信息。
 4. **语言**：句式、对话、描写密度是否符合 `novel.yaml`。
 
-脚本只核对能复现的问题，不能证明文学质量。只有在正文稳定后才提交状态事务。事务至少写章节号、摘要，以及本章确实改变的状态；没有变化的字段不要机械重复。事务文件存入 `state/transactions/`，提交后运行 `scripts/project_check.py`。
+脚本只核对能复现的问题，不能证明文学质量。只有在正文稳定后才提交状态事务。事务至少写章节号、摘要，以及本章确实改变的状态；没有变化的字段不要机械重复。事务可用 `handoff.carry_over` 记录下一章必须承接的活跃条目；长期未推进项用 `scripts/handoff_report.py` 检查，规则见 [跨章交接与防漂移](handoff-continuity.md)。事务文件存入 `state/transactions/`，提交后运行 `scripts/project_check.py`。

@@ -4,7 +4,7 @@
 
 1. 在 `novel.yaml` 写入 `length.target_chapters` 和 `length.target_words`。按起始、发展、转折、低谷、结局分配章节目标字数；建立每章章卡，确保总目标可达。目标字数是规划值，最终允许自然偏差，但低于总目标的 90% 时继续扩写或与用户重新确定篇幅。
 2. 在总纲标注主线、人物弧、关系弧或类型承诺及预期收束章节。章卡的 `change` 应让读者看得出推进；相邻几章没有实质变化时先调整章纲。
-3. 先运行 `scripts/project_check.py <project> --preflight book`；通过后对每章依次执行：生成上下文 → 写正文 → 运行 `scripts/review_chapter.py` 并修掉 `BLOCK` → 人工核对因果、POV/知识边界、角色行为和类型承诺 → 写事务 → 提交状态 → 运行 `scripts/project_check.py <project>`。写后核对步骤见 [写后审查与人工核对](post-draft-review.md)；脚本只负责可复现的问题，不能证明文学质量。下章只在本章正文与状态稳定后开始。上下文快照是临时输入，不是正文，也不保证后来仍反映最新状态。
+3. 先运行 `scripts/project_check.py <project> --preflight book`；通过后对每章依次执行：生成上下文 → 写正文 → 运行 `scripts/review_chapter.py` 并修掉 `BLOCK` → 人工核对因果、POV/知识边界、角色行为和类型承诺 → 写事务 → 提交状态 → 运行 `scripts/project_check.py <project>`。写后核对步骤见 [写后审查与人工核对](post-draft-review.md)；脚本只负责可复现的问题，不能证明文学质量。下章只在本章正文与状态稳定后开始。每个阶段结束时运行 `scripts/handoff_report.py`，检查长期未推进的主线、关系或伏笔，并把下一阶段必须承接的条目写入 `handoff`。上下文快照是临时输入，不是正文，也不保证后来仍反映最新状态。
 4. 最终运行 `scripts/project_check.py <project> --complete`。它检查章节数、字数下限、事务重放一致性、未收束剧情线与伏笔。通过后再人工检查结局兑现故事承诺、人物选择有因果、重复句式和跨章节奏；脚本不能证明文学质量。
 
 若创作中改变篇幅或章节数，先更新 `novel.yaml` 和受影响的章卡，再继续。若某章被重写，按 [continuity-state.md](continuity-state.md) 重建后续状态。交付时报告实际完成的章数与字数；若未达到完成标准，明确说是进行中的稿件。

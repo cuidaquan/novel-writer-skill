@@ -16,6 +16,7 @@
 - `revelations`：已确定的作者真相、当前知情角色，以及读者是否已明确知道。线索已出现但尚不能确认答案时保持 `reader_known: false`。
 - `timeline`：会影响连续性的事件记录。
 - `continuity_notes`：难以结构化但必须记住的约束。
+- `handoff`：本章之后仍有效的下一步承接。`carry_over` 列出下一章必须处理、且仍在 `plot_threads` 或 `foreshadowing` 中活跃的条目；`notes` 记录难以结构化但仍需承接的压力。它引用现有条目，不复制其状态，因此不是第二套真相源。
 
 ## 事务格式
 
@@ -45,11 +46,17 @@
   "timeline_events": [
     {"id": "ch12-warehouse-blackout", "time": "23:10", "event": "仓库停电"}
   ],
-  "continuity_notes_add": ["账本最后一页当前下落不明"]
+  "continuity_notes_add": ["账本最后一页当前下落不明"],
+  "handoff": {
+    "carry_over": ["main-case"],
+    "notes": ["证人的安全仍受威胁"]
+  }
 }
 ```
 
 `scripts/state_commit.py` 会检查当前状态、事务字段和候选状态，在通过校验后把事务保存为 `state/transactions/chapter-NNNN.json` 并更新 state.json。已有章节不能重复提交。
+
+`handoff` 记录本章之后仍要承接的压力。`carry_over` 只列出下一章必须处理、且在 state 里仍活跃的 `plot_threads` 或 `foreshadowing` 条目（已解决或已放弃的条目不能列入）；`notes` 记录难以结构化但需承接的约束。事务重放会得到唯一的当前 `handoff`；重写旧章后按重建流程重放即可。`scripts/handoff_report.py` 只读地列出显式承接、活跃压力和长期未推进项，规则见 [跨章交接与防漂移](handoff-continuity.md)。
 
 一个未公开条目可以在第 0 章状态中写成 `{"truth": "账本最后一页在仓库", "known_by": [], "reader_known": false}`。角色获知时更新 `known_by`；读者在正文中明确获知时同章设 `reader_known: true` 和 `revealed_chapter`。章节事务不能静默更改已确定的 `truth`、撤销读者已知或删除条目；如重写旧章改变真相，先审阅后续正文与事务，再按重建流程处理。
 

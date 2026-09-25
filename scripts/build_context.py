@@ -13,7 +13,8 @@ from pathlib import Path
 from modules import module_paths
 from planning import check_plan
 from project_yaml import ProjectYAMLError, read_yaml
-from state_model import read_json, validate_state
+from state_model import last_touched_chapters, read_json, validate_state
+from state_rebuild import transaction_paths
 
 
 def parse_args() -> argparse.Namespace:
@@ -39,6 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--state", type=Path, help="Use a reviewed historical state snapshot for revision")
     parser.add_argument("--compact-state", action="store_true", help="Include a focused state view instead of all history")
     parser.add_argument("--max-chars", type=int, help="Fail if the generated context exceeds this many characters")
+    parser.add_argument("--fit", action="store_true", help="With --max-chars, trim the recent state tail and oldest recent chapters to fit the budget")
     return parser.parse_args()
 
 
@@ -120,7 +122,58 @@ def display_path(project: Path, path: Path) -> str:
         return str(path)
 
 
-def compact_state(state: dict, characters: list[str], card: dict) -> dict:
+ACTIVE_THREAD_STATUS = {"open", "paused"}
+ACTIVE_FORESHADOWING_STATUS = {"planted", "active"}
+DEFAULT_TIMELINE_LIMIT = 20
+DEFAULT_NOTES_LIMIT = 20
+
+
+def active_pressure(state: dict, touched: dict[str, int], character_refs: set[str]) -> list[dict]:
+    """Prioritized list of still-open threads, clues and relevant relationships."""
+    items: list[dict] = []
+    threads = state.get("plot_threads") if isinstance(state.get("plot_threads"), dict) else {}
+    clues = state.get("foreshadowing") if isinstance(state.get("foreshadowing"), dict) else {}
+    relationships = state.get("relationships") if isinstance(state.get("relationships"), dict) else {}
+    for key, thread in threads.items():
+        if isinstance(thread, dict) and thread.get("status", "open") in ACTIVE_THREAD_STATUS:
+            items.append({
+                "kind": "plot_thread",
+                "id": key,
+                "status": thread.get("status", "open"),
+                "last_touched_chapter": touched.get(key, 0),
+            })
+    for key, clue in clues.items():
+        if isinstance(clue, dict) and clue.get("status", "planted") in ACTIVE_FORESHADOWING_STATUS:
+            items.append({
+                "kind": "foreshadowing",
+                "id": key,
+                "status": clue.get("status", "planted"),
+                "last_touched_chapter": touched.get(key, 0),
+            })
+    for key, relationship in relationships.items():
+        if not isinstance(relationship, dict) or relationship.get("status", "open") == "resolved":
+            continue
+        if not any(name in key.split("__") for name in character_refs):
+            continue
+        items.append({
+            "kind": "relationship",
+            "id": key,
+            "status": relationship.get("status", "open"),
+            "last_touched_chapter": touched.get(key, 0),
+        })
+    items.sort(key=lambda item: (item["last_touched_chapter"], item["kind"], item["id"]))
+    return items
+
+
+def compact_state(
+    state: dict,
+    characters: list[str],
+    card: dict,
+    transactions: list[dict],
+    timeline_limit: int = DEFAULT_TIMELINE_LIMIT,
+    notes_limit: int = DEFAULT_NOTES_LIMIT,
+) -> tuple[dict, dict]:
+    """Prioritized state view: references, active pressure and knowledge boundaries first."""
     threads = card.get("threads") if isinstance(card.get("threads"), dict) else {}
     foreshadowing = card.get("foreshadowing") if isinstance(card.get("foreshadowing"), dict) else {}
     thread_refs = set((threads.get("advance") or []) + (threads.get("touch") or []))
@@ -128,17 +181,37 @@ def compact_state(state: dict, characters: list[str], card: dict) -> dict:
     character_refs = set(characters)
     revelation_refs = card.get("revelations") if isinstance(card.get("revelations"), dict) else {}
     secret_ids = set((revelation_refs.get("touch") or []) + (revelation_refs.get("reveal") or []))
-    return {
+    handoff = state.get("handoff") if isinstance(state.get("handoff"), dict) else {}
+    carry_over = handoff.get("carry_over") if isinstance(handoff.get("carry_over"), list) else []
+    thread_refs.update(item for item in carry_over if item in state.get("plot_threads", {}))
+    clue_refs.update(item for item in carry_over if item in state.get("foreshadowing", {}))
+    touched = last_touched_chapters(transactions)
+    focused = {
         "schema_version": state["schema_version"],
         "project": state["project"],
+        "handoff": {
+            "carry_over": list(carry_over),
+            "notes": list(handoff.get("notes") or []),
+        },
+        "active_pressure": active_pressure(state, touched, character_refs),
         "characters": {key: value for key, value in state["characters"].items() if key in character_refs},
         "relationships": {key: value for key, value in state["relationships"].items() if any(name in key.split("__") for name in character_refs)},
-        "plot_threads": {key: value for key, value in state["plot_threads"].items() if key in thread_refs or value.get("status", "open") != "resolved"},
-        "foreshadowing": {key: value for key, value in state["foreshadowing"].items() if key in clue_refs or value.get("status", "planted") in {"planted", "active"}},
+        "plot_threads": {key: value for key, value in state["plot_threads"].items() if key in thread_refs or value.get("status", "open") in ACTIVE_THREAD_STATUS},
+        "foreshadowing": {key: value for key, value in state["foreshadowing"].items() if key in clue_refs or value.get("status", "planted") in ACTIVE_FORESHADOWING_STATUS},
         "revelations": {key: value for key, value in state.get("revelations", {}).items() if key in secret_ids},
-        "timeline": state["timeline"][-20:],
-        "continuity_notes": state["continuity_notes"][-20:],
+        "timeline": state["timeline"][-timeline_limit:] if timeline_limit else [],
+        "continuity_notes": state["continuity_notes"][-notes_limit:] if notes_limit else [],
     }
+    omitted = {
+        "characters": len(state["characters"]) - len(focused["characters"]),
+        "relationships": len(state["relationships"]) - len(focused["relationships"]),
+        "plot_threads": len(state["plot_threads"]) - len(focused["plot_threads"]),
+        "foreshadowing": len(state["foreshadowing"]) - len(focused["foreshadowing"]),
+        "revelations": len(state.get("revelations", {})) - len(focused["revelations"]),
+        "timeline": len(state["timeline"]) - len(focused["timeline"]),
+        "continuity_notes": len(state["continuity_notes"]) - len(focused["continuity_notes"]),
+    }
+    return focused, omitted
 
 
 def atomic_write(path: Path, content: str) -> None:
@@ -165,6 +238,8 @@ def main() -> int:
         raise SystemExit("--recent must be zero or greater")
     if args.max_chars is not None and args.max_chars < 1:
         raise SystemExit("--max-chars must be positive")
+    if args.fit and args.max_chars is None:
+        raise SystemExit("--fit requires --max-chars")
 
     project = args.project.expanduser().resolve()
     if not project.is_dir():
@@ -264,32 +339,78 @@ def main() -> int:
             seen.add(resolved)
             deduplicated_sources.append(resolved)
 
-    manifest = [
-        "# Chapter Context",
-        "",
-        f"- Target chapter: {chapter}",
-        f"- State current chapter: {current}",
-        f"- Recent chapters: {', '.join(map(str, recent_chapters)) if recent_chapters else 'none'}",
-        f"- Characters: {', '.join(character_ids) if character_ids else 'none'}",
-        f"- World entries: {', '.join(world_names) if world_names else 'none'}",
-        f"- State view: {'compact' if args.compact_state else 'full'}",
-        "- Information boundary: revelations.truth is author-only; reader_known=false is not confirmed to readers. A viewpoint character knows a truth only when listed in known_by. A planned reveal must be earned on the page before the transaction marks it reader-known.",
-        "- Sources:",
-    ]
-    manifest.extend(f"  - {display_path(project, path)}" for path in deduplicated_sources)
-    manifest.append("")
+    transaction_files = transaction_paths(project)
+    transactions = [read_json(path) for path in transaction_files]
 
-    blocks: list[str] = []
-    for path in deduplicated_sources:
-        if path == state_path and args.compact_state:
+    recent_path_numbers: dict[Path, int] = {}
+    for number in recent_chapters:
+        path = numbered_file(project / "chapters", "chapter", number, ("md", "txt"))
+        if path is not None:
+            recent_path_numbers[path.resolve()] = number
+
+    timeline_limit = DEFAULT_TIMELINE_LIMIT
+    notes_limit = DEFAULT_NOTES_LIMIT
+    selected_recent = set(recent_chapters)
+    trim_notes: list[str] = []
+
+    def render(timeline: int, notes: int, recent: set[int]) -> tuple[str, list[tuple[int, str]], dict | None]:
+        blocks: list[str] = []
+        sizes: list[tuple[int, str]] = []
+        omitted: dict | None = None
+        included: list[Path] = []
+        for path in deduplicated_sources:
+            number = recent_path_numbers.get(path)
+            if number is not None and number not in recent:
+                continue
+            included.append(path)
             relative = display_path(project, path)
-            focused = json.dumps(compact_state(state, character_ids, card_data), ensure_ascii=False, indent=2)
-            blocks.append(f"## Source: `{relative}` (focused view)\n\n<source path=\"{relative}\">\n{focused}\n</source>\n")
-        else:
-            blocks.append(source_block(project, path))
-    bundle = "\n".join(manifest) + "\n" + "\n".join(blocks)
+            if path == state_path and args.compact_state:
+                focused, omitted = compact_state(state, character_ids, card_data, transactions, timeline, notes)
+                content = json.dumps(focused, ensure_ascii=False, indent=2)
+                block = f"## Source: `{relative}` (focused view)\n\n<source path=\"{relative}\">\n{content}\n</source>\n"
+            else:
+                block = source_block(project, path)
+            blocks.append(block)
+            sizes.append((len(block), relative))
+        selected_list = [number for number in recent_chapters if number in recent]
+        manifest = [
+            "# Chapter Context",
+            "",
+            f"- Target chapter: {chapter}",
+            f"- State current chapter: {current}",
+            f"- Recent chapters: {', '.join(map(str, selected_list)) if selected_list else 'none'}",
+            f"- Characters: {', '.join(character_ids) if character_ids else 'none'}",
+            f"- World entries: {', '.join(world_names) if world_names else 'none'}",
+            f"- State view: {'compact' if args.compact_state else 'full'}",
+        ]
+        if args.compact_state and omitted is not None:
+            omitted_note = ", ".join(f"{key} {value}" for key, value in omitted.items() if value)
+            manifest.append(f"- Compact view omitted: {omitted_note or 'none'}")
+        if trim_notes:
+            manifest.append("- Trimmed for --max-chars: " + "; ".join(trim_notes))
+        manifest.append("- Information boundary: revelations.truth is author-only; reader_known=false is not confirmed to readers. A viewpoint character knows a truth only when listed in known_by. A planned reveal must be earned on the page before the transaction marks it reader-known.")
+        manifest.append("- Sources:")
+        manifest.extend(f"  - {display_path(project, path)}" for path in included)
+        manifest.append("")
+        return "\n".join(manifest) + "\n" + "\n".join(blocks), sizes, omitted
+
+    bundle, sizes, omitted = render(timeline_limit, notes_limit, selected_recent)
+    if args.max_chars and len(bundle) > args.max_chars and args.fit:
+        for limit in (10, 5, 2, 0):
+            timeline_limit = notes_limit = limit
+            trim_notes = [f"state timeline/notes tail reduced to {limit}"]
+            bundle, sizes, omitted = render(timeline_limit, notes_limit, selected_recent)
+            if len(bundle) <= args.max_chars:
+                break
+        while len(bundle) > args.max_chars and selected_recent:
+            ordered = [number for number in recent_chapters if number in selected_recent]
+            selected_recent.discard(ordered[0])
+            dropped = [number for number in recent_chapters if number not in selected_recent]
+            trim_notes = trim_notes[:1] + [f"dropped recent chapters: {', '.join(map(str, dropped))}"]
+            bundle, sizes, omitted = render(timeline_limit, notes_limit, selected_recent)
     if args.max_chars and len(bundle) > args.max_chars:
-        raise SystemExit(f"Context has {len(bundle)} characters, above --max-chars={args.max_chars}; reduce --recent or use --compact-state")
+        largest = ", ".join(f"{label} ({size} chars)" for size, label in sorted(sizes, reverse=True)[:3])
+        raise SystemExit(f"Context has {len(bundle)} characters, above --max-chars={args.max_chars}; largest sources: {largest}. Reduce --recent, use --compact-state or pass --fit.")
 
     if args.output:
         atomic_write(args.output, bundle)

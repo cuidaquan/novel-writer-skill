@@ -9,5 +9,9 @@
   "foreshadowing_updates": {},
   "revelation_updates": {},
   "timeline_events": [],
-  "continuity_notes_add": []
+  "continuity_notes_add": [],
+  "handoff": {
+    "carry_over": [],
+    "notes": []
+  }
 }

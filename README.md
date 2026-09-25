@@ -13,6 +13,8 @@
 - 用项目校验检查章节数量、字数、事务重放及完结时的未解决剧情线。
 - 写正文后用只读的单章审查报告定位空正文、残留占位、明显截断和章卡缺项，按 BLOCK/NOTE 分级并给出文件/行号、命中依据和修订方向。
 - 用近期定稿章节做基线，提示句长、段落长度、对话比例和重复开头/结尾的偏移；样本不足时明确标记无基线，偏移只作提示。
+- 用 `handoff` 契约记录下一章必须承接的压力，事务重放得到唯一的当前交接状态；`scripts/handoff_report.py` 报出长期未推进的主线/关系/伏笔。
+- `--compact-state` 优先装配 POV、章卡引用、活跃压力与知识边界，并给出省略摘要；`--fit` 可在预算内裁剪。
 - 写正文前可分别检查整本规划或连载当前阶段；未就绪的章卡不能生成下一章上下文。
 - 支持悬疑、惊悚、言情、奇幻、仙侠、科幻、历史、都市等题材，也允许组合。
 - 改稿时按结构、人物、对话、描写、语言和连续性的顺序检查。
@@ -52,6 +54,7 @@ python3 scripts/build_context.py /path/to/my-novel \
 ```bash
 python3 scripts/review_chapter.py /path/to/my-novel --chapter 1
 python3 scripts/style_report.py /path/to/my-novel --chapter 1
+python3 scripts/handoff_report.py /path/to/my-novel --stale 5
 ```
 
 每章完成后可提交状态事务：

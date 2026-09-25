@@ -101,6 +101,8 @@ class ReviewTestCase(unittest.TestCase):
         state_path = self.project / "state" / "state.json"
         state = json.loads(state_path.read_text(encoding="utf-8"))
         state["project"]["current_chapter"] = number
+        if isinstance(state.get("handoff"), dict):
+            state["handoff"]["chapter"] = number
         state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
@@ -200,6 +202,8 @@ class StyleReport(ReviewTestCase):
         state_path = project / "state" / "state.json"
         state = json.loads(state_path.read_text(encoding="utf-8"))
         state["project"]["current_chapter"] = current
+        if isinstance(state.get("handoff"), dict):
+            state["handoff"]["chapter"] = current
         state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         return project
 

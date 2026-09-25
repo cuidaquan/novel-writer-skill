@@ -128,6 +128,32 @@ def validate_state(state: dict) -> list[str]:
     notes = state.get("continuity_notes")
     if not isinstance(notes, list) or any(not nonempty(note) for note in notes):
         errors.append("continuity_notes must be a list of non-empty strings")
+    handoff = state.get("handoff")
+    if handoff is not None:
+        if not isinstance(handoff, dict):
+            errors.append("handoff must be an object")
+        else:
+            chapter = handoff.get("chapter")
+            if not integer(chapter) or (integer(current) and chapter != current):
+                errors.append("handoff.chapter must equal project.current_chapter")
+            carry_over = handoff.get("carry_over", [])
+            if not isinstance(carry_over, list) or any(not nonempty(item) for item in carry_over) or len(carry_over) != len(set(carry_over)):
+                errors.append("handoff.carry_over must be a list of distinct non-empty ids")
+            elif integer(chapter):
+                threads = state.get("plot_threads") if isinstance(state.get("plot_threads"), dict) else {}
+                clues = state.get("foreshadowing") if isinstance(state.get("foreshadowing"), dict) else {}
+                for item in carry_over:
+                    thread = threads.get(item)
+                    clue = clues.get(item)
+                    if thread is None and clue is None:
+                        errors.append(f"handoff.carry_over references unknown item: {item}")
+                    elif isinstance(thread, dict) and thread.get("status", "open") == "resolved":
+                        errors.append(f"handoff.carry_over cannot reference a resolved plot thread: {item}")
+                    elif isinstance(clue, dict) and clue.get("status", "planted") in {"resolved", "dropped"}:
+                        errors.append(f"handoff.carry_over cannot reference closed foreshadowing: {item}")
+            handoff_notes = handoff.get("notes", [])
+            if not isinstance(handoff_notes, list) or any(not nonempty(note) for note in handoff_notes):
+                errors.append("handoff.notes must be a list of non-empty strings")
     return errors
 
 
@@ -161,6 +187,17 @@ def validate_transaction(tx: dict, current: int) -> list[str]:
     notes = tx.get("continuity_notes_add", [])
     if not isinstance(notes, list) or any(not nonempty(note) for note in notes):
         errors.append("continuity_notes_add must be a list of non-empty strings")
+    handoff = tx.get("handoff")
+    if handoff is not None:
+        if not isinstance(handoff, dict):
+            errors.append("handoff must be an object")
+        else:
+            carry_over = handoff.get("carry_over", [])
+            if not isinstance(carry_over, list) or any(not nonempty(item) for item in carry_over):
+                errors.append("handoff.carry_over must be a list of non-empty ids")
+            handoff_notes = handoff.get("notes", [])
+            if not isinstance(handoff_notes, list) or any(not nonempty(note) for note in handoff_notes):
+                errors.append("handoff.notes must be a list of non-empty strings")
     return errors
 
 
@@ -207,10 +244,37 @@ def apply_transaction(state: dict, tx: dict) -> dict:
     result["project"]["current_chapter"] = current + 1
     result["project"]["last_chapter_title"] = tx.get("chapter_title", "")
     result["project"]["last_chapter_summary"] = tx["summary"].strip()
+    supplied = tx.get("handoff")
+    supplied = supplied if isinstance(supplied, dict) else {}
+    carry_over = supplied.get("carry_over", [])
+    handoff_notes = supplied.get("notes", [])
+    result["handoff"] = {
+        "chapter": current + 1,
+        "carry_over": list(dict.fromkeys(item for item in carry_over if isinstance(item, str) and item.strip())),
+        "notes": [note.strip() for note in handoff_notes if isinstance(note, str) and note.strip()],
+    }
     errors = validate_state(result)
     if errors:
         raise ValueError("transaction would produce invalid state: " + "; ".join(errors))
     return result
+
+
+def last_touched_chapters(transactions: list[dict]) -> dict[str, int]:
+    """Map every state key updated by a transaction to its latest chapter."""
+    touched: dict[str, int] = {}
+    for chapter, tx in enumerate(transactions, 1):
+        for field in (
+            "character_updates",
+            "relationship_updates",
+            "plot_thread_updates",
+            "foreshadowing_updates",
+            "revelation_updates",
+        ):
+            updates = tx.get(field)
+            if isinstance(updates, dict):
+                for key in updates:
+                    touched[key] = chapter
+    return touched
 
 
 def replay(initial: dict, transactions: list[dict]) -> dict:

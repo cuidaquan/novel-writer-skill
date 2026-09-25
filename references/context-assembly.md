@@ -41,7 +41,7 @@ python3 scripts/build_context.py /path/to/novel \
 
 输出文件是临时上下文，不是新的事实源。正文、配置和 `state/state.json` 仍是权威来源；原文件变化后应重新生成，不继续使用旧包。
 
-`--compact-state` 只纳入本章人物、相关关系、未结束剧情线/伏笔及最近 20 条时间线和备注；重要旧事实若被省略，应回看完整状态或资料源。`--max-chars` 只检查大小，超限会失败，不会静默截断。修改旧章时可用 `--state` 指向 `state_rebuild.py --through` 生成的历史快照。
+`--compact-state` 按优先级纳入本章人物、相关关系、`handoff.carry_over`、活跃剧情线/伏笔与知识边界，再取最近 20 条时间线和备注；清单会给出被省略条目的摘要。重要旧事实若被省略，应回看完整状态或资料源。`--max-chars` 超限会失败并列出最大的来源；加 `--fit` 会先缩短时间线/备注尾部，再从旧到新丢弃近期章节，直到进入预算，并在清单里记录裁剪内容。修改旧章时可用 `--state` 指向 `state_rebuild.py --through` 生成的历史快照。
 
 隐藏真相在精简视图中只按章卡 `revelations.touch`、`revelations.reveal` 纳入。`truth` 是作者信息；`reader_known: false` 不能被叙述成读者已经确认的事实。人物能否据此行动还要看 `known_by`。生成器会把这条边界写入上下文清单，但正文和事务仍须人工核对。
 

@@ -171,18 +171,28 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
             if not path_ref.is_relative_to(root) or not any(candidate.is_file() for candidate in (path_ref, path_ref.with_suffix(".md"), path_ref.with_suffix(".yaml"), path_ref.with_suffix(".yml"))):
                 errors.append(f"{card_path.name}: context world entry missing or outside world/: {world}")
         if number <= current:
+            transaction_threads = mapping(tx.get("plot_thread_updates"))
             threads = mapping(card.get("threads"))
             for name in ("advance", "touch"):
                 for item in id_list(threads.get(name, []), f"{card_path.name} threads.{name}", errors):
                     if item not in available_threads:
                         errors.append(f"{card_path.name}: unknown plot thread {item}")
+                    elif item not in transaction_threads:
+                        if name == "advance":
+                            errors.append(f"{card_path.name}: promised plot thread advance {item} is missing from the chapter transaction")
+                        else:
+                            warnings.append(f"{card_path.name}: promised plot thread touch {item} is missing from the chapter transaction")
+            transaction_foreshadowing = mapping(tx.get("foreshadowing_updates"))
             foreshadowing = mapping(card.get("foreshadowing"))
             for name in ("plant", "pay_off"):
                 for item in id_list(foreshadowing.get(name, []), f"{card_path.name} foreshadowing.{name}", errors):
                     if item not in available_foreshadowing:
                         errors.append(f"{card_path.name}: unknown foreshadowing {item}")
+                    elif item not in transaction_foreshadowing:
+                        errors.append(f"{card_path.name}: promised foreshadowing {name} {item} is missing from the chapter transaction")
             if card.get("revelations") is not None and not isinstance(card["revelations"], dict):
                 errors.append(f"{card_path.name}: revelations must be a mapping")
+            transaction_revelations = mapping(tx.get("revelation_updates"))
             revelations = mapping(card.get("revelations"))
             planned_reveals: set[str] = set()
             for name in ("touch", "reveal"):
@@ -191,10 +201,12 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
                         errors.append(f"{card_path.name}: unknown revelation {item}")
                     if name == "reveal":
                         planned_reveals.add(item)
-                        update = mapping(tx.get("revelation_updates")).get(item)
+                        update = transaction_revelations.get(item)
                         if not isinstance(update, dict) or update.get("reader_known") is not True or update.get("revealed_chapter") != number:
                             errors.append(f"{card_path.name}: planned reveal {item} is missing from chapter transaction")
-            for item, update in mapping(tx.get("revelation_updates")).items():
+                    elif item in available_revelations and item not in transaction_revelations:
+                        warnings.append(f"{card_path.name}: promised revelation touch {item} is missing from the chapter transaction")
+            for item, update in transaction_revelations.items():
                 if isinstance(update, dict) and update.get("reader_known") is True and update.get("revealed_chapter") == number and item not in planned_reveals:
                     errors.append(f"{card_path.name}: reader reveal {item} is missing from control card")
 
