@@ -81,7 +81,10 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
         current = 0
     stats["committed"] = current
     if current != len(journals):
-        errors.append(f"state.current_chapter={current} but transaction count={len(journals)}")
+        errors.append(
+            f"state.current_chapter={current} but transaction count={len(journals)}; "
+            "run state_rebuild.py --write to resynchronize the derived snapshot from the journal"
+        )
     if current and set(range(1, current + 1)) - chapters.keys():
         errors.append("one or more committed chapters have no body file")
     if current and set(range(1, current + 1)) - cards.keys():

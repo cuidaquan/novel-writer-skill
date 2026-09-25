@@ -41,7 +41,7 @@ description: Create, continue, or revise fiction projects—especially novels an
 
 每章事务可用 `handoff.carry_over` 记录下一章必须承接、且仍在 `plot_threads` 或 `foreshadowing` 中活跃的条目；`scripts/handoff_report.py` 只读报告显式承接、活跃压力与长期未推进项，`project_check.py` 会核对章卡承诺是否落入事务。
 
-项目化写正文前，整本创作运行 `scripts/project_check.py <project> --preflight book`，连载创作运行 `--preflight serial`。缺项先补计划；`build_context.py` 也会检查即将写的章节。一次性短篇正文仍走轻量流程。
+项目化写正文前，整本创作运行 `scripts/project_check.py <project> --preflight book`，连载创作运行 `--preflight serial`。缺项先补计划；`build_context.py` 也会检查即将写的章节。一次性短篇正文仍走轻量流程。命令失败时按 [失败恢复](references/failure-recovery.md) 处理，旧章改稿后的重放冲突见该文与 [连续性与状态事务](references/continuity-state.md)。
 
 ## 项目文件约定
 

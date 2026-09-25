@@ -30,6 +30,17 @@ Use $novel-writer-skill to create a 60-chapter urban mystery novel with a restra
 third-person limited POV, high dialogue density, and low exposition density.
 ```
 
+## 按工作模式的最短路径
+
+- **短篇正文**：用户只要正文时直接写，不必建项目；需要文件化时可建单章项目走整本流程。
+- **新书整本**：`init_novel.py` → 填 `novel.yaml`、总纲与章卡 → `project_check.py --preflight book` → 每章 `build_context.py` → 写正文 → `review_chapter.py` → `state_commit.py` → `project_check.py`，最后 `--complete`。
+- **连载续写**：确认当前阶段纲后 `project_check.py --preflight serial` → `build_context.py --compact-state` → 写正文 → `review_chapter.py` → `state_commit.py` → `project_check.py`；阶段回顾加 `handoff_report.py` 与 `promise_report.py`。
+- **改稿/审稿**：先 `review_chapter.py`（必要时 `--style`）与 `style_report.py`，再按 [改稿顺序](references/revision-quality.md) 人工核对；步骤见 [写后审查](references/post-draft-review.md)。
+- **重写旧章**：`state_rebuild.py --through N-1` 取快照 → `build_context.py --chapter N --state ...` → 改正文与事务 → `state_rebuild.py --write` → `project_check.py`。
+- **完结验收**：`handoff_report.py` 清点承接，`project_check.py --complete` 校验章节、字数与未收束线索。
+
+命令失败时按 [失败恢复](references/failure-recovery.md) 处理。
+
 初始化小说项目：
 
 ```bash
@@ -71,5 +82,11 @@ python3 scripts/project_check.py /path/to/my-novel
 整本完成后运行 `python3 scripts/project_check.py /path/to/my-novel --complete`。重写旧章用 `scripts/state_rebuild.py` 从 `state/initial.json` 和事务日志重建状态；具体步骤见 [完整成书流程](references/full-book-workflow.md) 与 [连续性事务](references/continuity-state.md)。
 
 校验器按汉字逐字、英文逐词计数，不计标点和空行。项目 YAML 使用常见的缩进映射、列表和标量；当前标准库解析器不支持锚点、标签和多行块标量。
+
+## 支持环境
+
+- Python 3.9 及以上；脚本只用标准库，不安装第三方包。
+- 路径处理使用 `pathlib`，展示路径统一用正斜杠；Windows 上命令分隔符与本地路径写法需按 shell 调整。
+- 自动化测试在 macOS/POSIX 上运行；Windows 未纳入本仓库的自动化验证，限制如实标注，不以文档代替验证。
 
 详细流程见 [SKILL.md](SKILL.md)。
