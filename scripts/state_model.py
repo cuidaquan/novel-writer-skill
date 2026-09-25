@@ -198,6 +198,19 @@ def validate_transaction(tx: dict, current: int) -> list[str]:
             handoff_notes = handoff.get("notes", [])
             if not isinstance(handoff_notes, list) or any(not nonempty(note) for note in handoff_notes):
                 errors.append("handoff.notes must be a list of non-empty strings")
+    acknowledged = tx.get("acknowledged_blocks")
+    if acknowledged is not None:
+        if not isinstance(acknowledged, list):
+            errors.append("acknowledged_blocks must be a list")
+        else:
+            seen_checks: set[str] = set()
+            for index, item in enumerate(acknowledged):
+                if not isinstance(item, dict) or not nonempty(item.get("check")) or not nonempty(item.get("reason")):
+                    errors.append(f"acknowledged_blocks[{index}] must be an object with non-empty check and reason")
+                    continue
+                if item["check"] in seen_checks:
+                    errors.append(f"acknowledged_blocks[{index}] duplicates check: {item['check']}")
+                seen_checks.add(item["check"])
     return errors
 
 

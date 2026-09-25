@@ -23,10 +23,16 @@ from project_yaml import ProjectYAMLError, read_yaml
 from state_model import read_json, validate_state
 
 
-PLACEHOLDER_PATTERNS = (
-    ("marker", re.compile(r"\bTODO\b|\bTBD\b|\bFIXME\b|\bXXX\b|placeholder|lorem ipsum", re.IGNORECASE)),
+HARD_PLACEHOLDER_PATTERNS = (
+    ("marker", re.compile(r"\bTODO\b|\bTBD\b|\bFIXME\b|\bXXX\b", re.IGNORECASE)),
     ("template", re.compile(r"\{\{|\}\}|<!--|-->")),
-    ("unfinished", re.compile(r"待补|待写|待填|待展开|待续|占位|此处补|此处展开|待定")),
+    ("unfinished", re.compile(r"待补|待写|待填|待展开|此处补|此处展开")),
+)
+
+# Words that also occur in ordinary prose ("结果待定。"). They stay advisory so the
+# blocking gate cannot false-block drafted dialogue.
+SOFT_PLACEHOLDER_PATTERNS = (
+    ("ambiguous", re.compile(r"待定|待续|占位|placeholder|lorem ipsum", re.IGNORECASE)),
 )
 
 DELIMITER_PAIRS = (
@@ -217,25 +223,22 @@ def knowledge_findings(chapter: Chapter) -> list[Finding]:
     return findings
 
 
-def body_findings(chapter: Chapter) -> list[Finding]:
-    assert chapter.body_path is not None
-    path = chapter.body_path
-    text = chapter.body_text
+def text_blocks(path: Path, text: str) -> list[Finding]:
+    """Deterministic blocking prose checks shared by review, commit and project check."""
     findings: list[Finding] = []
     if not text.strip():
-        findings.append(
+        return [
             Finding(
                 "BLOCK", "empty-body", path, 1,
                 "chapter body is empty",
                 "the file contains no non-whitespace content",
                 "write the chapter body before reviewing; an empty file must not be committed.",
             )
-        )
-        return findings
+        ]
 
     lines = prose_metrics.paragraphs(text)
     for number, line in lines:
-        for label, pattern in PLACEHOLDER_PATTERNS:
+        for label, pattern in HARD_PLACEHOLDER_PATTERNS:
             match = pattern.search(line)
             if match:
                 findings.append(
@@ -243,7 +246,8 @@ def body_findings(chapter: Chapter) -> list[Finding]:
                         "BLOCK", "placeholder", path, number,
                         f"leftover placeholder text: {match.group(0)!r}",
                         f"matched the {label} placeholder pattern in this line",
-                        "replace the placeholder with drafted prose.",
+                        "replace the placeholder with drafted prose, or acknowledge it with "
+                        "--allow placeholder --reason <text> when it is intentional.",
                     )
                 )
                 break
@@ -280,15 +284,43 @@ def body_findings(chapter: Chapter) -> list[Finding]:
                     "finish the sentence or remove the fragment before committing.",
                 )
             )
-        elif stripped and stripped[-1] not in TERMINAL_CHARS and not stripped.startswith(MARKDOWN_PREFIXES):
-            findings.append(
-                Finding(
-                    "NOTE", "ending-punctuation", path, last_number,
-                    f"last line has no terminal punctuation (ends with {stripped[-1]!r})",
-                    "prose lines normally end with a full stop, question mark or closing quote",
-                    "confirm the chapter is complete and not cut off.",
+    return findings
+
+
+def body_findings(chapter: Chapter) -> list[Finding]:
+    assert chapter.body_path is not None
+    path = chapter.body_path
+    text = chapter.body_text
+    findings = text_blocks(path, text)
+    if not text.strip():
+        return findings
+
+    lines = prose_metrics.paragraphs(text)
+    for number, line in lines:
+        for label, pattern in SOFT_PLACEHOLDER_PATTERNS:
+            match = pattern.search(line)
+            if match:
+                findings.append(
+                    Finding(
+                        "NOTE", "placeholder-hint", path, number,
+                        f"possible placeholder text: {match.group(0)!r}",
+                        f"matched the {label} placeholder pattern; advisory because the word can occur in prose",
+                        "confirm the line is drafted prose and not a leftover marker.",
+                    )
                 )
+                break
+
+    last_number, last_line = lines[-1]
+    stripped = last_line.rstrip()
+    if not any(finding.check == "dangling-ending" for finding in findings) and stripped and stripped[-1] not in TERMINAL_CHARS and not stripped.startswith(MARKDOWN_PREFIXES):
+        findings.append(
+            Finding(
+                "NOTE", "ending-punctuation", path, last_number,
+                f"last line has no terminal punctuation (ends with {stripped[-1]!r})",
+                "prose lines normally end with a full stop, question mark or closing quote",
+                "confirm the chapter is complete and not cut off.",
             )
+        )
 
     target = chapter.card.get("target_words")
     words = prose_metrics.count_words(text)
