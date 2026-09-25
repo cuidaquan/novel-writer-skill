@@ -2,6 +2,10 @@
 
 版本对应 .doc/roadmap-v0.6-v1.0.md 的路线。公开字段契约见 [references/project-contract.md](references/project-contract.md)。
 
+## 1.4.0
+- `prose_lint.py`：可配置的套路扫描（词表、正则句式、标点频率），全部为带行号的 NOTE，默认不启用规则，不阻断提交。
+- 人物声音区分度：完成可行性评估后**暂缓**，结论与重新评估条件见 .doc/voice-prototype-evaluation.md。
+
 ## 1.3.0
 - `progress_report.py`：进度、剩余章节、按均速的预计完稿与未收束条目计数。
 - `state_view.py --write/--check`：由 state 渲染派生视图（明确标注非真相源），并检测派生文件是否陈旧。

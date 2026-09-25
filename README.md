@@ -25,6 +25,7 @@
 - `style_report` 对照近期定稿章的开场/结尾签名，提示连续同类开场或悬念句；`style_profile` 输出词频、标点频率与字符型例比（只作观察，不设阈值）。
 - `progress_report.py` 给出进度、剩余章节、按均速的预计完稿与未收束条目；`state_view.py --write/--check` 生成并校验派生状态视图；`stage_review.py` 把进度、交接、承诺与文风聚合成阶段复盘。
 - `build_context.py` 清单标注哪些题材有专门模块、哪些走通用路径。
+- `prose_lint.py` 按项目规则扫描重复用词、句式套路与标点习惯；全部命中只作提示，规则默认不启用。
 - 写正文前可分别检查整本规划或连载当前阶段；未就绪的章卡不能生成下一章上下文。
 - 支持悬疑、惊悚、言情、奇幻、仙侠、科幻、历史、都市等题材，也允许组合。
 - 改稿时按结构、人物、对话、描写、语言和连续性的顺序检查。
@@ -81,6 +82,7 @@ python3 scripts/promise_report.py /path/to/my-novel --deferred-streak 3
 python3 scripts/progress_report.py /path/to/my-novel
 python3 scripts/state_view.py /path/to/my-novel --write /tmp/state-view.md
 python3 scripts/stage_review.py /path/to/my-novel
+python3 scripts/prose_lint.py /path/to/my-novel --all --default-rules
 ```
 
 每章完成后可提交状态事务：
@@ -96,7 +98,7 @@ python3 scripts/project_check.py /path/to/my-novel
 
 ## 支持环境
 
-- 当前版本 1.3.0；变更见 [CHANGELOG.md](CHANGELOG.md)，公开字段见 [项目契约](references/project-contract.md)，已知限制见 [已知限制](references/known-limitations.md)。
+- 当前版本 1.4.0；变更见 [CHANGELOG.md](CHANGELOG.md)，公开字段见 [项目契约](references/project-contract.md)，已知限制见 [已知限制](references/known-limitations.md)。
 - Python 3.9 及以上；脚本只用标准库，不安装第三方包。
 - 路径处理使用 `pathlib`，展示路径统一用正斜杠；Windows 上命令分隔符与本地路径写法需按 shell 调整。
 - 自动化测试在 macOS/POSIX 上运行；Windows 未纳入本仓库的自动化验证，限制如实标注，不以文档代替验证。
