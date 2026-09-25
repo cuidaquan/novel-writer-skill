@@ -113,6 +113,15 @@ class CommitGate(unittest.TestCase):
         self.assertIn("not reported for chapter 1", unknown.stderr)
         self.assertFalse(self.journal.exists())
 
+    def test_project_check_leaves_uncommitted_drafts_alone(self) -> None:
+        self.assertEqual(self.commit().returncode, 0)
+        (self.project / "control-cards" / "chapter-0002.yaml").write_text(
+            CARD.replace("chapter: 1", "chapter: 2").replace("title: 第一章", "title: 第二章"), encoding="utf-8"
+        )
+        (self.project / "chapters" / "chapter-0002.md").write_text("# 第二章\n\nTODO\n", encoding="utf-8")
+        result = run_script("project_check.py", self.project, ok=False)
+        self.assertEqual(result.returncode, 0)
+
     def test_state_outside_a_project_is_refused(self) -> None:
         bare = self.root / "bare.json"
         bare.write_text(self.state.read_text(encoding="utf-8"), encoding="utf-8")

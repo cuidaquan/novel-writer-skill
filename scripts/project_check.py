@@ -130,21 +130,22 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
         body = path.read_text(encoding="utf-8")
         words = count_words(body)
         stats["words"] += words
-        acknowledged: dict[str, str] = {}
-        if isinstance(tx.get("acknowledged_blocks"), list):
-            acknowledged = {
-                item["check"]: item.get("reason", "")
-                for item in tx["acknowledged_blocks"]
-                if isinstance(item, dict) and nonempty(item.get("check"))
-            }
-        for finding in review.text_blocks(path, body):
-            if finding.check in acknowledged:
-                warnings.append(
-                    f"chapter {number}: acknowledged {finding.check} "
-                    f"({acknowledged[finding.check] or 'no reason recorded'})"
-                )
-            else:
-                errors.append(f"chapter {number}: " + review.format_finding(project, finding))
+        if number <= current:
+            acknowledged: dict[str, str] = {}
+            if isinstance(tx.get("acknowledged_blocks"), list):
+                acknowledged = {
+                    item["check"]: item.get("reason", "")
+                    for item in tx["acknowledged_blocks"]
+                    if isinstance(item, dict) and nonempty(item.get("check"))
+                }
+            for finding in review.text_blocks(path, body):
+                if finding.check in acknowledged:
+                    warnings.append(
+                        f"chapter {number}: acknowledged {finding.check} "
+                        f"({acknowledged[finding.check] or 'no reason recorded'})"
+                    )
+                else:
+                    errors.append(f"chapter {number}: " + review.format_finding(project, finding))
         card_path = cards.get(number)
         if card_path is None:
             continue
