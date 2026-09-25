@@ -214,6 +214,57 @@ class LongFormProject(unittest.TestCase):
         self.assertIn("# Chapter Context", fitted.stdout)
         self.assertLessEqual(len(fitted.stdout), budget)
 
+    def test_compact_view_tiers_active_pressure_under_budget(self) -> None:
+        state_path = self.project / "state" / "state.json"
+        state = self.state()
+        state["plot_threads"] = {f"t{index:03d}": {"status": "open"} for index in range(150)}
+        state["foreshadowing"] = {f"f{index:03d}": {"status": "active"} for index in range(60)}
+        state["project"]["current_chapter"] = 5
+        state["handoff"] = {"chapter": 5, "carry_over": ["t000", "t001"], "notes": ["长期压力"]}
+        payload = json.dumps(state, ensure_ascii=False, indent=2) + "\n"
+        state_path.write_text(payload, encoding="utf-8")
+        (self.project / "state" / "initial.json").write_text(payload, encoding="utf-8")
+        card6 = self.project / "control-cards" / "chapter-0006.yaml"
+        card6.write_text(
+            card6.read_text(encoding="utf-8").replace("advance: ['main']", "advance: ['main', 't005']"),
+            encoding="utf-8",
+        )
+
+        context = run_script(
+            "build_context.py", self.project, "--compact-state", "--chapter", 6, "--max-chars", "12000"
+        ).stdout
+        self.assertLessEqual(len(context), 12000)
+        focused_text = context.split("focused view", 1)[1]
+        focused = json.loads(focused_text[focused_text.index("{"):focused_text.rindex("}") + 1])
+        self.assertEqual(focused["handoff"]["carry_over"], ["t000", "t001"])
+        self.assertIn("t000", focused["plot_threads"])
+        self.assertIn("t005", focused["plot_threads"])
+        self.assertEqual(len(focused["active_pressure"]), 40)
+        self.assertEqual(focused["active_pressure_omitted"], 211 - 40)
+        self.assertIn("Full active list: run scripts/handoff_report.py", context)
+
+        limited = run_script(
+            "build_context.py", self.project, "--compact-state", "--chapter", 6, "--active-limit", "0"
+        ).stdout
+        limited_text = limited.split("focused view", 1)[1]
+        limited_data = json.loads(limited_text[limited_text.index("{"):limited_text.rindex("}") + 1])
+        self.assertEqual(limited_data["active_pressure"], [])
+        self.assertEqual(limited_data["active_pressure_omitted"], 211)
+
+        over = run_script(
+            "build_context.py", self.project, "--compact-state", "--chapter", 6, "--max-chars", "1500", ok=False
+        )
+        self.assertEqual(over.returncode, 1)
+        self.assertIn("largest sources:", over.stderr)
+
+        full = run_script("build_context.py", self.project, "--compact-state", "--chapter", 6).stdout
+        budget = len(full) - 300
+        fitted = run_script(
+            "build_context.py", self.project, "--compact-state", "--chapter", 6, "--fit", "--max-chars", str(budget)
+        )
+        self.assertLessEqual(len(fitted.stdout), budget)
+        self.assertIn("Trimmed for --max-chars", fitted.stdout)
+
     def test_handoff_report_after_completion(self) -> None:
         for number in range(1, 13):
             self.commit(number)

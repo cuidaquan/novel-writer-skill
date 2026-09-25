@@ -41,7 +41,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--state", type=Path, help="Use a reviewed historical state snapshot for revision")
     parser.add_argument("--compact-state", action="store_true", help="Include a focused state view instead of all history")
     parser.add_argument("--max-chars", type=int, help="Fail if the generated context exceeds this many characters")
-    parser.add_argument("--fit", action="store_true", help="With --max-chars, trim the recent state tail and oldest recent chapters to fit the budget")
+    parser.add_argument("--fit", action="store_true", help="With --max-chars, shrink the compact view and recent chapters to fit the budget")
+    parser.add_argument("--active-limit", type=int, help=f"Maximum active-pressure digests in the compact view (default: {DEFAULT_ACTIVE_LIMIT})")
     parser.add_argument("--style-anchor", action="store_true", help="Add a short observed style anchor derived from finalized chapters")
     parser.add_argument("--anchor-recent", type=int, default=5, help="Finalized chapters pooled for the style anchor (default: 5)")
     return parser.parse_args()
@@ -129,10 +130,21 @@ ACTIVE_THREAD_STATUS = {"open", "paused"}
 ACTIVE_FORESHADOWING_STATUS = {"planted", "active"}
 DEFAULT_TIMELINE_LIMIT = 20
 DEFAULT_NOTES_LIMIT = 20
+DEFAULT_ACTIVE_LIMIT = 40
 
 
-def active_pressure(state: dict, touched: dict[str, int], character_refs: set[str]) -> list[dict]:
-    """Prioritized list of still-open threads, clues and relevant relationships."""
+def active_pressure(
+    state: dict,
+    touched: dict[str, int],
+    character_refs: set[str],
+    referenced: set[str],
+) -> list[dict]:
+    """Digest of still-open items, referenced first, then longest untouched.
+
+    Full objects stay in the sections for items the chapter references or the
+    handoff carries over; everything else is only summarised here so a project
+    with many live threads cannot inflate the context without bound.
+    """
     items: list[dict] = []
     threads = state.get("plot_threads") if isinstance(state.get("plot_threads"), dict) else {}
     clues = state.get("foreshadowing") if isinstance(state.get("foreshadowing"), dict) else {}
@@ -144,6 +156,7 @@ def active_pressure(state: dict, touched: dict[str, int], character_refs: set[st
                 "id": key,
                 "status": thread.get("status", "open"),
                 "last_touched_chapter": touched.get(key, 0),
+                "_referenced": key in referenced,
             })
     for key, clue in clues.items():
         if isinstance(clue, dict) and clue.get("status", "planted") in ACTIVE_FORESHADOWING_STATUS:
@@ -152,6 +165,7 @@ def active_pressure(state: dict, touched: dict[str, int], character_refs: set[st
                 "id": key,
                 "status": clue.get("status", "planted"),
                 "last_touched_chapter": touched.get(key, 0),
+                "_referenced": key in referenced,
             })
     for key, relationship in relationships.items():
         if not isinstance(relationship, dict) or relationship.get("status", "open") == "resolved":
@@ -163,9 +177,10 @@ def active_pressure(state: dict, touched: dict[str, int], character_refs: set[st
             "id": key,
             "status": relationship.get("status", "open"),
             "last_touched_chapter": touched.get(key, 0),
+            "_referenced": True,
         })
-    items.sort(key=lambda item: (item["last_touched_chapter"], item["kind"], item["id"]))
-    return items
+    items.sort(key=lambda item: (not item["_referenced"], item["last_touched_chapter"], item["kind"], item["id"]))
+    return [{key: value for key, value in item.items() if key != "_referenced"} for item in items]
 
 
 def compact_state(
@@ -175,8 +190,9 @@ def compact_state(
     transactions: list[dict],
     timeline_limit: int = DEFAULT_TIMELINE_LIMIT,
     notes_limit: int = DEFAULT_NOTES_LIMIT,
+    active_limit: int = DEFAULT_ACTIVE_LIMIT,
 ) -> tuple[dict, dict]:
-    """Prioritized state view: references, active pressure and knowledge boundaries first."""
+    """Prioritized state view: references and carry-over stay whole, the rest is a digest."""
     threads = card.get("threads") if isinstance(card.get("threads"), dict) else {}
     foreshadowing = card.get("foreshadowing") if isinstance(card.get("foreshadowing"), dict) else {}
     thread_refs = set((threads.get("advance") or []) + (threads.get("touch") or []))
@@ -189,6 +205,9 @@ def compact_state(
     thread_refs.update(item for item in carry_over if item in state.get("plot_threads", {}))
     clue_refs.update(item for item in carry_over if item in state.get("foreshadowing", {}))
     touched = last_touched_chapters(transactions)
+    active = active_pressure(state, touched, character_refs, thread_refs | clue_refs)
+    digest = active[:active_limit] if active_limit else []
+    omitted_active = len(active) - len(digest)
     focused = {
         "schema_version": state["schema_version"],
         "project": state["project"],
@@ -196,11 +215,12 @@ def compact_state(
             "carry_over": list(carry_over),
             "notes": list(handoff.get("notes") or []),
         },
-        "active_pressure": active_pressure(state, touched, character_refs),
+        "active_pressure": digest,
+        "active_pressure_omitted": omitted_active,
         "characters": {key: value for key, value in state["characters"].items() if key in character_refs},
         "relationships": {key: value for key, value in state["relationships"].items() if any(name in key.split("__") for name in character_refs)},
-        "plot_threads": {key: value for key, value in state["plot_threads"].items() if key in thread_refs or value.get("status", "open") in ACTIVE_THREAD_STATUS},
-        "foreshadowing": {key: value for key, value in state["foreshadowing"].items() if key in clue_refs or value.get("status", "planted") in ACTIVE_FORESHADOWING_STATUS},
+        "plot_threads": {key: value for key, value in state["plot_threads"].items() if key in thread_refs},
+        "foreshadowing": {key: value for key, value in state["foreshadowing"].items() if key in clue_refs},
         "revelations": {key: value for key, value in state.get("revelations", {}).items() if key in secret_ids},
         "timeline": state["timeline"][-timeline_limit:] if timeline_limit else [],
         "continuity_notes": state["continuity_notes"][-notes_limit:] if notes_limit else [],
@@ -213,6 +233,7 @@ def compact_state(
         "revelations": len(state.get("revelations", {})) - len(focused["revelations"]),
         "timeline": len(state["timeline"]) - len(focused["timeline"]),
         "continuity_notes": len(state["continuity_notes"]) - len(focused["continuity_notes"]),
+        "active_pressure": omitted_active,
     }
     return focused, omitted
 
@@ -245,6 +266,8 @@ def main() -> int:
         raise SystemExit("--fit requires --max-chars")
     if args.anchor_recent < 1:
         raise SystemExit("--anchor-recent must be positive")
+    if args.active_limit is not None and args.active_limit < 0:
+        raise SystemExit("--active-limit must be zero or greater")
 
     project = args.project.expanduser().resolve()
     if not project.is_dir():
@@ -380,12 +403,13 @@ def main() -> int:
         if path is not None:
             recent_path_numbers[path.resolve()] = number
 
+    active_limit = args.active_limit if args.active_limit is not None else DEFAULT_ACTIVE_LIMIT
     timeline_limit = DEFAULT_TIMELINE_LIMIT
     notes_limit = DEFAULT_NOTES_LIMIT
     selected_recent = set(recent_chapters)
     trim_notes: list[str] = []
 
-    def render(timeline: int, notes: int, recent: set[int]) -> tuple[str, list[tuple[int, str]], dict | None]:
+    def render(active: int, timeline: int, notes: int, recent: set[int]) -> tuple[str, list[tuple[int, str]], dict | None]:
         blocks: list[str] = []
         sizes: list[tuple[int, str]] = []
         omitted: dict | None = None
@@ -397,7 +421,7 @@ def main() -> int:
             included.append(path)
             relative = display_path(project, path)
             if path == state_path and args.compact_state:
-                focused, omitted = compact_state(state, character_ids, card_data, transactions, timeline, notes)
+                focused, omitted = compact_state(state, character_ids, card_data, transactions, timeline, notes, active)
                 content = json.dumps(focused, ensure_ascii=False, indent=2)
                 block = f"## Source: `{relative}` (focused view)\n\n<source path=\"{relative}\">\n{content}\n</source>\n"
             else:
@@ -421,6 +445,8 @@ def main() -> int:
         if args.compact_state and omitted is not None:
             omitted_note = ", ".join(f"{key} {value}" for key, value in omitted.items() if value)
             manifest.append(f"- Compact view omitted: {omitted_note or 'none'}")
+            if omitted.get("active_pressure"):
+                manifest.append("- Full active list: run scripts/handoff_report.py")
         if trim_notes:
             manifest.append("- Trimmed for --max-chars: " + "; ".join(trim_notes))
         if args.style_anchor:
@@ -435,12 +461,13 @@ def main() -> int:
         manifest.append("")
         return "\n".join(manifest) + "\n" + "\n".join(blocks), sizes, omitted
 
-    bundle, sizes, omitted = render(timeline_limit, notes_limit, selected_recent)
+    bundle, sizes, omitted = render(active_limit, timeline_limit, notes_limit, selected_recent)
     if args.max_chars and len(bundle) > args.max_chars and args.fit:
-        for limit in (10, 5, 2, 0):
-            timeline_limit = notes_limit = limit
-            trim_notes = [f"state timeline/notes tail reduced to {limit}"]
-            bundle, sizes, omitted = render(timeline_limit, notes_limit, selected_recent)
+        for step_active, step_timeline, step_notes in ((20, 10, 10), (10, 5, 5), (5, 2, 2), (0, 0, 0)):
+            active_limit = min(active_limit, step_active)
+            timeline_limit, notes_limit = step_timeline, step_notes
+            trim_notes = [f"compact view reduced to active<={active_limit}, timeline<={timeline_limit}, notes<={notes_limit}"]
+            bundle, sizes, omitted = render(active_limit, timeline_limit, notes_limit, selected_recent)
             if len(bundle) <= args.max_chars:
                 break
         while len(bundle) > args.max_chars and selected_recent:
@@ -448,7 +475,7 @@ def main() -> int:
             selected_recent.discard(ordered[0])
             dropped = [number for number in recent_chapters if number not in selected_recent]
             trim_notes = trim_notes[:1] + [f"dropped recent chapters: {', '.join(map(str, dropped))}"]
-            bundle, sizes, omitted = render(timeline_limit, notes_limit, selected_recent)
+            bundle, sizes, omitted = render(active_limit, timeline_limit, notes_limit, selected_recent)
     if args.max_chars and len(bundle) > args.max_chars:
         largest = ", ".join(f"{label} ({size} chars)" for size, label in sorted(sizes, reverse=True)[:3])
         raise SystemExit(f"Context has {len(bundle)} characters, above --max-chars={args.max_chars}; largest sources: {largest}. Reduce --recent, use --compact-state or pass --fit.")
