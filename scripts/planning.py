@@ -25,6 +25,7 @@ BOOK_FIELDS = (
 )
 STAGE_FIELDS = ("阶段目标", "主冲突", "阶段末变化", "下一阶段压力")
 PLACEHOLDERS = {"待定", "未定", "TODO", "TBD", "角色名", "未命名小说"}
+PAYOFF_STATUS = {"fulfilled", "deferred"}
 
 
 def filled(value: object) -> bool:
@@ -41,6 +42,23 @@ def missing_fields(path: Path, labels: tuple[str, ...], errors: list[str]) -> No
         pattern = re.compile(rf"^\s*(?:[-*]|\d+[.)])\s*{re.escape(label)}[：:]\s*(.*?)\s*$")
         if not any((match := pattern.match(line)) and filled(match.group(1)) for line in lines):
             errors.append(f"{path.name}: fill {label}")
+
+
+def check_payoff(card: dict, label: str, errors: list[str]) -> None:
+    """Validate the optional per-chapter genre payoff record."""
+    payoff = card.get("payoff")
+    if payoff is None:
+        return
+    if not isinstance(payoff, dict):
+        errors.append(f"{label}: payoff must be a mapping")
+        return
+    if not filled(payoff.get("expected")):
+        errors.append(f"{label}: fill payoff.expected")
+    status = payoff.get("status")
+    if status not in PAYOFF_STATUS:
+        errors.append(f"{label}: payoff.status must be one of {sorted(PAYOFF_STATUS)}")
+    if status == "deferred" and not filled(payoff.get("reason")):
+        errors.append(f"{label}: fill payoff.reason when payoff.status is deferred")
 
 
 def numbered_path(directory: Path, prefix: str, number: int, extensions: tuple[str, ...]) -> Path | None:
@@ -99,6 +117,7 @@ def check_card(project: Path, novel: dict, number: int, allowed_povs: set[str], 
         module_paths(novel, card)
     except ValueError as exc:
         errors.append(f"{path.name}: {exc}")
+    check_payoff(card, path.name, errors)
     return target
 
 

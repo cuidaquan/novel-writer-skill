@@ -10,6 +10,7 @@ import re
 import tempfile
 from pathlib import Path
 
+import prose_metrics
 from modules import module_paths
 from planning import check_plan
 from project_yaml import ProjectYAMLError, read_yaml
@@ -41,6 +42,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--compact-state", action="store_true", help="Include a focused state view instead of all history")
     parser.add_argument("--max-chars", type=int, help="Fail if the generated context exceeds this many characters")
     parser.add_argument("--fit", action="store_true", help="With --max-chars, trim the recent state tail and oldest recent chapters to fit the budget")
+    parser.add_argument("--style-anchor", action="store_true", help="Add a short observed style anchor derived from finalized chapters")
+    parser.add_argument("--anchor-recent", type=int, default=5, help="Finalized chapters pooled for the style anchor (default: 5)")
     return parser.parse_args()
 
 
@@ -240,6 +243,8 @@ def main() -> int:
         raise SystemExit("--max-chars must be positive")
     if args.fit and args.max_chars is None:
         raise SystemExit("--fit requires --max-chars")
+    if args.anchor_recent < 1:
+        raise SystemExit("--anchor-recent must be positive")
 
     project = args.project.expanduser().resolve()
     if not project.is_dir():
@@ -339,6 +344,33 @@ def main() -> int:
             seen.add(resolved)
             deduplicated_sources.append(resolved)
 
+    anchor_lines = ""
+    anchor_chapters: list[int] = []
+    if args.style_anchor:
+        anchor_texts: list[str] = []
+        for number in range(max(1, current - args.anchor_recent + 1), current + 1):
+            path = numbered_file(project / "chapters", "chapter", number, ("md", "txt"))
+            if path is not None:
+                anchor_texts.append(path.read_text(encoding="utf-8"))
+                anchor_chapters.append(number)
+        pooled = prose_metrics.pooled_metrics(anchor_texts)
+        if pooled["paragraphs"] >= prose_metrics.MIN_BASELINE_PARAGRAPHS and pooled["characters"] >= prose_metrics.MIN_BASELINE_CHARACTERS:
+            proposals = prose_metrics.style_proposals(pooled)
+            anchor_lines = "\n".join(
+                [
+                    f"## Style anchor (observed from {len(anchor_chapters)} finalized chapter(s))",
+                    "",
+                    f"- chapters: {', '.join(map(str, anchor_chapters))}",
+                    f"- avg_sentence_chars: {pooled['avg_sentence_chars']}",
+                    f"- avg_paragraph_chars: {pooled['avg_paragraph_chars']}",
+                    f"- dialogue_line_ratio: {pooled['dialogue_line_ratio']}",
+                    f"- suggested style.sentence_length: {proposals['sentence_length']}",
+                    f"- suggested style.dialogue_density: {proposals['dialogue_density']}",
+                    "- Observed from finalized chapters; confirm against novel.yaml before treating it as a rule.",
+                    "",
+                ]
+            )
+
     transaction_files = transaction_paths(project)
     transactions = [read_json(path) for path in transaction_files]
 
@@ -372,6 +404,9 @@ def main() -> int:
                 block = source_block(project, path)
             blocks.append(block)
             sizes.append((len(block), relative))
+        if anchor_lines:
+            blocks.append(anchor_lines)
+            sizes.append((len(anchor_lines), "style-anchor"))
         selected_list = [number for number in recent_chapters if number in recent]
         manifest = [
             "# Chapter Context",
@@ -388,6 +423,12 @@ def main() -> int:
             manifest.append(f"- Compact view omitted: {omitted_note or 'none'}")
         if trim_notes:
             manifest.append("- Trimmed for --max-chars: " + "; ".join(trim_notes))
+        if args.style_anchor:
+            manifest.append(
+                f"- Style anchor: chapters {', '.join(map(str, anchor_chapters))}"
+                if anchor_lines
+                else "- Style anchor: unavailable (insufficient finalized sample)"
+            )
         manifest.append("- Information boundary: revelations.truth is author-only; reader_known=false is not confirmed to readers. A viewpoint character knows a truth only when listed in known_by. A planned reveal must be earned on the page before the transaction marks it reader-known.")
         manifest.append("- Sources:")
         manifest.extend(f"  - {display_path(project, path)}" for path in included)

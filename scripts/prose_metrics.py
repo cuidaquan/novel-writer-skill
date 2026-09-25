@@ -84,8 +84,32 @@ def repeated_signatures(items: list[tuple[int, str]], minimum: int = REPEAT_MINI
     return sorted(repeats, key=lambda item: (-len(item[1]), item[0]))
 
 
+SENTENCE_BANDS = ((12, "short"), (22, "short-to-medium"), (32, "medium"), (float("inf"), "long"))
+PARAGRAPH_BANDS = ((40, "short"), (80, "medium"), (float("inf"), "long"))
+DIALOGUE_BANDS = ((0.15, "low"), (0.35, "medium"), (float("inf"), "high"))
+
+
 def mean(values: list[int]) -> float:
     return round(sum(values) / len(values), 2) if values else 0.0
+
+
+def band(value: float, bands: tuple) -> str:
+    for limit, label in bands:
+        if value < limit:
+            return label
+    return bands[-1][1]
+
+
+def pooled_metrics(texts: list[str]) -> dict:
+    return metrics("\n\n".join(texts))
+
+
+def style_proposals(value: dict) -> dict:
+    """Map observed metrics to novel.yaml style bands. Judgement fields are excluded."""
+    return {
+        "sentence_length": band(value["avg_sentence_chars"], SENTENCE_BANDS),
+        "dialogue_density": band(value["dialogue_line_ratio"], DIALOGUE_BANDS),
+    }
 
 
 def metrics(text: str) -> dict:

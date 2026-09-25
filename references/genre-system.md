@@ -41,3 +41,22 @@
 ## 混合类型
 
 主类型决定“读者为什么翻下一章”，辅助类型决定场景质感和次级回报。出现冲突时，先保证主类型的叙事承诺，再用辅助类型丰富角色与世界。
+
+## 类型兑现跟踪
+
+章卡可选用 `payoff` 记录本章承诺给读者的类型回报：
+
+```yaml
+payoff:
+  expected: 给出关于钥匙的可靠线索
+  status: deferred
+  reason: 本章需要先处理证人的安全
+```
+
+`status` 取 `fulfilled` 或 `deferred`，延后必须写 `reason`。阶段回顾运行：
+
+```bash
+python3 scripts/promise_report.py /path/to/novel --deferred-streak 3
+```
+
+报告列出每章兑现情况与连续延后提示；悬疑下追踪尚未揭晓的信息，言情下追踪关系推进章节，其他类型保留同一套通用延后路径。连续延后只是提示，不是情节错误，也不强加某种节奏公式。

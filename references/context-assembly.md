@@ -43,6 +43,8 @@ python3 scripts/build_context.py /path/to/novel \
 
 `--compact-state` 按优先级纳入本章人物、相关关系、`handoff.carry_over`、活跃剧情线/伏笔与知识边界，再取最近 20 条时间线和备注；清单会给出被省略条目的摘要。重要旧事实若被省略，应回看完整状态或资料源。`--max-chars` 超限会失败并列出最大的来源；加 `--fit` 会先缩短时间线/备注尾部，再从旧到新丢弃近期章节，直到进入预算，并在清单里记录裁剪内容。修改旧章时可用 `--state` 指向 `state_rebuild.py --through` 生成的历史快照。
 
+需要观测锚点时加 `--style-anchor`（`--anchor-recent` 控制取样章数）：它从已定稿章节提取一段简短的可观察指标，作为低优先级来源加入上下文；样本不足时清单写“unavailable”。
+
 隐藏真相在精简视图中只按章卡 `revelations.touch`、`revelations.reveal` 纳入。`truth` 是作者信息；`reader_known: false` 不能被叙述成读者已经确认的事实。人物能否据此行动还要看 `known_by`。生成器会把这条边界写入上下文清单，但正文和事务仍须人工核对。
 
 ## 选择人物与世界观

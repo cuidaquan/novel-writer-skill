@@ -15,6 +15,8 @@
 - 用近期定稿章节做基线，提示句长、段落长度、对话比例和重复开头/结尾的偏移；样本不足时明确标记无基线，偏移只作提示。
 - 用 `handoff` 契约记录下一章必须承接的压力，事务重放得到唯一的当前交接状态；`scripts/handoff_report.py` 报出长期未推进的主线/关系/伏笔。
 - `--compact-state` 优先装配 POV、章卡引用、活跃压力与知识边界，并给出省略摘要；`--fit` 可在预算内裁剪。
+- 用 `style_profile.py` 从定稿章节或样章提取可复核画像并建议文风参数；`build_context.py --style-anchor` 可把简短观测锚点放进上下文。
+- 章卡可用 `payoff` 记录类型回报，`promise_report.py` 提示连续延后，并在悬疑/言情下分别追踪信息控制与关系推进。
 - 写正文前可分别检查整本规划或连载当前阶段；未就绪的章卡不能生成下一章上下文。
 - 支持悬疑、惊悚、言情、奇幻、仙侠、科幻、历史、都市等题材，也允许组合。
 - 改稿时按结构、人物、对话、描写、语言和连续性的顺序检查。
@@ -55,6 +57,8 @@ python3 scripts/build_context.py /path/to/my-novel \
 python3 scripts/review_chapter.py /path/to/my-novel --chapter 1
 python3 scripts/style_report.py /path/to/my-novel --chapter 1
 python3 scripts/handoff_report.py /path/to/my-novel --stale 5
+python3 scripts/style_profile.py /path/to/my-novel --recent 5
+python3 scripts/promise_report.py /path/to/my-novel --deferred-streak 3
 ```
 
 每章完成后可提交状态事务：

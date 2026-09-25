@@ -13,8 +13,8 @@ description: Create, continue, or revise fiction projects—especially novels an
 - **新建项目或整本小说**：先读 [references/workflow.md](references/workflow.md) 与 [references/planning-preflight.md](references/planning-preflight.md)；要求完整成书时还须读 [references/full-book-workflow.md](references/full-book-workflow.md)，按章推进并通过完成校验。
 - **续写章节**：先读 [references/context-assembly.md](references/context-assembly.md) 装配上下文，再读 [references/chapter-cards.md](references/chapter-cards.md)、[references/continuity-state.md](references/continuity-state.md) 与 [references/handoff-continuity.md](references/handoff-continuity.md)，用 `scripts/handoff_report.py` 查看下一章必须承接的压力。
 - **重写旧章节**：读 [references/continuity-state.md](references/continuity-state.md)，用 `scripts/state_rebuild.py` 得到旧章之前的事实快照；重写后核对、重放后续事务。
-- **定义或调整文风**：读 [references/style-system.md](references/style-system.md)。把文风拆成可描述的参数，不把某个作者姓名当作文风配置本身。
-- **选择或混合题材**：读 [references/genre-system.md](references/genre-system.md)。只加载当前题材真正需要的约束。
+- **定义或调整文风**：读 [references/style-system.md](references/style-system.md)。把文风拆成可描述的参数，不把某个作者姓名当作文风配置本身；可用 `scripts/style_profile.py` 从定稿章节或样章提取可复核画像。
+- **选择或混合题材**：读 [references/genre-system.md](references/genre-system.md)。只加载当前题材真正需要的约束；章卡可用 `payoff` 记录类型回报，`scripts/promise_report.py` 跟踪连续延后。
 - **改稿/审稿**：先按 [references/post-draft-review.md](references/post-draft-review.md) 做只读的写后审查（`scripts/review_chapter.py`、`scripts/style_report.py`），再读 [references/revision-quality.md](references/revision-quality.md)，先修剧情和场景，再修语言。
 
 ## 配置优先级

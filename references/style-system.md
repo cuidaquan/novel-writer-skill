@@ -48,3 +48,14 @@ style:
 ## 从样章提取风格
 
 用户提供样章时，只提取可观察特征：句长分布、段落长度、对话比例、叙事距离、常用感官、动作/心理比例、比喻频率、场景进入方式、结尾方式和明确禁忌。把结果写成参数配置，再用新内容验证；不要复制样章中的独特措辞、句子或标志性表达。
+
+## 生成风格画像
+
+```bash
+python3 scripts/style_profile.py /path/to/novel --recent 5
+python3 scripts/style_profile.py /path/to/novel --sample /path/to/sample.md
+```
+
+画像只报告可观察指标（句长、段落长度、对话比例、重复开头/结尾），并给出 `style.sentence_length` 与 `style.dialogue_density` 的建议取值；样本不足时明确写 INSUFFICIENT，不虚构结论。它只存聚合数字，不把样章句子存成模仿模板。`tone`、`pov_distance`、`interiority` 等判断性字段仍由作者确认后再写入 `novel.yaml`。
+
+续写时可加 `build_context.py --style-anchor`（`--anchor-recent` 控制取样章数），把一段简短的观测锚点放进上下文；它是可选的低优先级信息，不挤掉必要事实，也不替代 `novel.yaml`。

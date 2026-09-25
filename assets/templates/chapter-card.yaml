@@ -33,6 +33,11 @@ style_modules: []
 required_facts: []
 forbidden: []
 
+# payoff:                  # optional genre payoff for this chapter
+#   expected: ""
+#   status: fulfilled      # fulfilled | deferred
+#   reason: ""             # required when status is deferred
+
 ending:
   mode: hook
   hook: ""

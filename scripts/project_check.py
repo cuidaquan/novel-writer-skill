@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 
 from modules import module_paths
-from planning import check_plan
+from planning import check_payoff, check_plan
 from prose_metrics import count_words
 from project_yaml import ProjectYAMLError, read_yaml
 from state_model import integer, nonempty, read_json, validate_state
@@ -141,6 +141,7 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
             module_paths(novel, card)
         except ValueError as exc:
             errors.append(f"{card_path.name}: {exc}")
+        check_payoff(card, card_path.name, errors)
         if card.get("chapter") != number:
             errors.append(f"{card_path.name}: chapter field must be {number}")
         if number <= current and nonempty(card.get("title")) and tx.get("chapter_title") != card["title"]:
