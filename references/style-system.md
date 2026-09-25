@@ -61,3 +61,5 @@ python3 scripts/style_profile.py /path/to/novel --sample /path/to/sample.md
 续写时可加 `build_context.py --style-anchor`（`--anchor-recent` 控制取样章数），把一段简短的观测锚点放进上下文；它是可选的低优先级信息，不挤掉必要事实，也不替代 `novel.yaml`。
 
 `style_report.py` 还会把本章的开场/结尾签名与近期定稿章对照（`## Cross-chapter patterns`），提示“连续多章同类开场或悬念句”。这也是提示：重复是否成立由作者判断，章节内重复与跨章重复分开列出。
+
+画像与报告还给出词频（连续汉字二元组近似，不依赖分词）、标点每百字频率与 CJK 字符型例比（type-token ratio）。这三项只是观察，不设阈值、不参与漂移判定，用来发现某个词或某种标点被反复使用；读法见 [已知限制](known-limitations.md)。

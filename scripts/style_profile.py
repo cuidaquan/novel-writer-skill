@@ -135,6 +135,13 @@ def main() -> int:
     print(repeat_line("repeated openings (>=3)", pooled["repeated_openings"]))
     print(repeat_line("repeated endings (>=3)", pooled["repeated_endings"]))
     print()
+    print("## Word and punctuation habits")
+    print("- top bigrams: " + (", ".join(f"{term} {count}" for term, count in pooled["top_bigrams"]) or "none"))
+    if pooled["top_latin_words"]:
+        print("- top latin words: " + ", ".join(f"{term} {count}" for term, count in pooled["top_latin_words"]))
+    print("- punctuation per 100 chars: " + (", ".join(f"{mark} {rate}" for mark, _, rate in pooled["punctuation_profile"]) or "none"))
+    print(f"- CJK type-token ratio: {pooled['cjk_type_token_ratio']}")
+    print()
     print("## Proposed novel.yaml style (confirm before writing)")
     print("style:")
     print(f"  sentence_length: {proposals['sentence_length']}")
@@ -153,6 +160,7 @@ def main() -> int:
     print("## Not inferred")
     print("- tone, pov_distance, interiority, metaphor_density, humor and violence need an author read; the profile leaves them unchanged.")
     print("- Only aggregate numbers are stored; no source sentence becomes an imitation template.")
+    print("- Word bigrams, punctuation rates and the type-token ratio are observations only: they carry no thresholds and no pass/fail.")
     return 0
 
 

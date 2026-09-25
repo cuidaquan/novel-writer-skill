@@ -759,6 +759,14 @@ def render_style_report(chapter: Chapter, baseline: StyleBaseline, findings: lis
         lines.append("- repeated endings: none")
     lines.append("")
 
+    lines.append("## Habits (chapter)")
+    lines.append("- top bigrams: " + (", ".join(f"{term} {count}" for term, count in target["top_bigrams"]) or "none"))
+    if target["top_latin_words"]:
+        lines.append("- top latin words: " + ", ".join(f"{term} {count}" for term, count in target["top_latin_words"]))
+    lines.append("- punctuation per 100 chars: " + (", ".join(f"{mark} {rate}" for mark, _, rate in target["punctuation_profile"]) or "none"))
+    lines.append(f"- CJK type-token ratio: {target['cjk_type_token_ratio']}")
+    lines.append("")
+
     lines.append(f"## Drift hints ({len(findings)})")
     if findings:
         lines.extend(format_finding(chapter.project, finding) for finding in findings)

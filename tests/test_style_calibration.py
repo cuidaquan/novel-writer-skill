@@ -170,5 +170,22 @@ class StyleCalibration(unittest.TestCase):
         self.assertIn("(none)", patterns)
 
 
+    def test_profile_reports_word_and_punctuation_habits(self) -> None:
+        line = "他仿佛听见了什么，仿佛又什么都没有听见……"
+        lines = [line] * 16
+        project = self.build("habits", lines, lines)
+        profile = run_script("style_profile.py", project, "--recent", 5).stdout
+        self.assertIn("## Word and punctuation habits", profile)
+        self.assertIn("仿佛", profile)
+        self.assertIn("punctuation per 100 chars", profile)
+        self.assertIn("CJK type-token ratio", profile)
+        self.assertIn("no thresholds and no pass/fail", profile)
+
+    def test_style_report_shows_chapter_habits(self) -> None:
+        report = self.report(self.build("habits-report", LONG_LINES, LONG_LINES))
+        self.assertIn("## Habits (chapter)", report)
+        self.assertIn("CJK type-token ratio", report)
+
+
 if __name__ == "__main__":
     unittest.main()
