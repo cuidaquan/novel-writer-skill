@@ -19,6 +19,8 @@
 
 `scripts/init_novel.py` 会从 `assets/templates/` 复制一套最小项目骨架。
 
+项目化创作在正文前按 [写前规划与验收](planning-preflight.md) 检查准备情况。整本检查完整章卡和字数预算；连载检查当前阶段纲与下一章。空白模板只能作为起点，不代表已完成规划。
+
 要求完整成书时继续读 [full-book-workflow.md](full-book-workflow.md)。
 
 ## 续写

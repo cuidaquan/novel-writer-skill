@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 from modules import module_paths
+from planning import check_plan
 from project_yaml import ProjectYAMLError, read_yaml
 from state_model import integer, nonempty, read_json, validate_state
 from state_rebuild import rebuild, transaction_paths
@@ -227,16 +228,24 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
 def main() -> int:
     parser = argparse.ArgumentParser(description="Validate a novel project and optional finished-book gate")
     parser.add_argument("project", type=Path)
-    parser.add_argument("--complete", action="store_true", help="Require every planned chapter, word target and resolved plot")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--complete", action="store_true", help="Require every planned chapter, word target and resolved plot")
+    mode.add_argument("--preflight", choices=("book", "serial"), help="Check the plan before writing a full book or the next serial chapter")
     args = parser.parse_args()
-    errors, warnings, stats = check(args.project.expanduser().resolve(), args.complete)
+    project = args.project.expanduser().resolve()
+    errors, warnings, stats = check(project, args.complete)
+    if args.preflight and not errors:
+        errors.extend(check_plan(project, args.preflight))
     for warning in warnings:
         print(f"WARN: {warning}")
     for error in errors:
         print(f"ERROR: {error}")
     if errors:
         return 1
-    print(f"OK: {stats['committed']} committed chapters, {stats['chapters']} body files, {stats['words']} words")
+    if args.preflight:
+        print(f"OK: {args.preflight} preflight, next chapter {stats['committed'] + 1}")
+    else:
+        print(f"OK: {stats['committed']} committed chapters, {stats['chapters']} body files, {stats['words']} words")
     return 0
 
 

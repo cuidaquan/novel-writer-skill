@@ -11,6 +11,7 @@ import tempfile
 from pathlib import Path
 
 from modules import module_paths
+from planning import check_plan
 from project_yaml import ProjectYAMLError, read_yaml
 from state_model import read_json, validate_state
 
@@ -190,6 +191,9 @@ def main() -> int:
             f"Target chapter must be the next chapter ({current + 1}); got {chapter}. "
             "Revision contexts need manual review because state.json may contain later facts."
         )
+    plan_errors = check_plan(project, "chapter", chapter, state_path)
+    if plan_errors:
+        raise SystemExit("chapter preflight failed:\n" + "\n".join(f"- {error}" for error in plan_errors))
 
     card = numbered_file(project / "control-cards", "chapter", chapter, ("yaml", "yml"))
     if card is None:

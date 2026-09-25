@@ -11,6 +11,7 @@
 - 分开记录作者已确定的真相、角色知情范围和读者已知边界；章节事务校验揭示时间。
 - 在章节上下文中按需加载悬疑、言情与场景文风模块。
 - 用项目校验检查章节数量、字数、事务重放及完结时的未解决剧情线。
+- 写正文前可分别检查整本规划或连载当前阶段；未就绪的章卡不能生成下一章上下文。
 - 支持悬疑、惊悚、言情、奇幻、仙侠、科幻、历史、都市等题材，也允许组合。
 - 改稿时按结构、人物、对话、描写、语言和连续性的顺序检查。
 
@@ -27,6 +28,13 @@ third-person limited POV, high dialogue density, and low exposition density.
 
 ```bash
 python3 scripts/init_novel.py /path/to/my-novel --title "小说名"
+```
+
+动笔前检查规划（按创作模式二选一）：
+
+```bash
+python3 scripts/project_check.py /path/to/my-novel --preflight book
+python3 scripts/project_check.py /path/to/my-novel --preflight serial
 ```
 
 生成下一章上下文包：

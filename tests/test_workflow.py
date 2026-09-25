@@ -36,8 +36,27 @@ class NovelProjectWorkflow(unittest.TestCase):
         novel = novel.replace("target_chapters: null", "target_chapters: 2")
         novel = novel.replace("viewpoint_characters: []", "viewpoint_characters: [hero]")
         (self.project / "novel.yaml").write_text(novel, encoding="utf-8")
-        (self.project / "characters" / "hero.yaml").write_text("id: hero\nname: 主角\n", encoding="utf-8")
+        (self.project / "characters" / "hero.yaml").write_text("id: hero\nname: 主角\ncore:\n  desire: 找到失踪的朋友\n  fear: 再次失去线索\n", encoding="utf-8")
         (self.project / "world" / "town.md").write_text("# 城镇\n", encoding="utf-8")
+        (self.project / "outline" / "master.md").write_text("""# 总纲
+## 故事承诺
+- 主角：寻找朋友的调查员
+- 核心欲望：找回朋友
+- 最大阻力：线索被人篡改
+- 失败代价：朋友会永远失踪
+- 核心读者回报：从碎片中拼出真相
+## 关键转折
+1. 起始失衡：朋友失踪
+2. 第一次不可逆选择：主角公开调查
+3. 中段认知/局势变化：主角发现自己也被利用
+4. 最严重失败或代价：证人遇险
+5. 终局选择：公开证据并承担后果
+6. 结局状态：朋友获救，主角失去职位
+## 跨章弧线
+- 主角从什么状态变到什么状态：从逃避到承担责任
+- 关键关系从什么状态变到什么状态：从互不信任到合作
+- 主类型承诺将在何处兑现：最后一章揭示真相
+""", encoding="utf-8")
         for number in (1, 2):
             card = f"""chapter: {number}
 title: 第{number}章
@@ -45,6 +64,8 @@ viewpoint: hero
 target_words: 50
 goal: 找到真相
 conflict: 有人阻挠
+change:
+  plot: 主角获得新线索
 context:
   characters: [hero]
   world: [town]
@@ -210,6 +231,55 @@ foreshadowing:
         result = run_script("build_context.py", self.project, ok=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unknown style module", result.stderr)
+
+    def test_preflight_rejects_blank_project_but_regular_check_remains_available(self) -> None:
+        fresh = Path(self.temp.name) / "fresh"
+        run_script("init_novel.py", fresh, "--title", "新书")
+        self.assertEqual(run_script("project_check.py", fresh).returncode, 0)
+        for mode in ("book", "serial"):
+            result = run_script("project_check.py", fresh, "--preflight", mode, ok=False)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("fill 主角", result.stdout)
+            self.assertIn("missing planned control card", result.stdout)
+
+    def test_book_preflight_checks_whole_plan_and_budget(self) -> None:
+        run_script("project_check.py", self.project, "--preflight", "book")
+        second = self.project / "control-cards" / "chapter-0002.yaml"
+        second.unlink()
+        (self.project / "chapters" / "chapter-0002.md").unlink()
+        result = run_script("project_check.py", self.project, "--preflight", "book", ok=False)
+        self.assertIn("missing planned control card for chapter 2", result.stdout)
+        self.assertIn("word budget", result.stdout)
+
+    def test_serial_preflight_checks_current_stage_and_next_chapter(self) -> None:
+        result = run_script("project_check.py", self.project, "--preflight", "serial", ok=False)
+        self.assertIn("missing current stage outline", result.stdout)
+        stage = self.project / "outline" / "volumes" / "volume-01.md"
+        stage.write_text((ROOT / "assets" / "templates" / "volume-outline.md").read_text(encoding="utf-8"), encoding="utf-8")
+        result = run_script("project_check.py", self.project, "--preflight", "serial", ok=False)
+        self.assertIn("fill 阶段目标", result.stdout)
+        stage.write_text("""# 第一阶段
+- 阶段目标：找到第一条可靠线索
+- 主冲突：调查遭到阻挠
+- 阶段末变化：主角确定朋友还活着
+- 下一阶段压力：证人的安全受到威胁
+""", encoding="utf-8")
+        run_script("project_check.py", self.project, "--preflight", "serial")
+        self.commit(1)
+        run_script("project_check.py", self.project, "--preflight", "serial")
+        second = self.project / "control-cards" / "chapter-0002.yaml"
+        second.write_text(second.read_text(encoding="utf-8").replace("conflict: 有人阻挠", "conflict: \"\""), encoding="utf-8")
+        result = run_script("project_check.py", self.project, "--preflight", "serial", ok=False)
+        self.assertIn("chapter-0002.yaml: fill conflict", result.stdout)
+
+    def test_context_blocks_unready_chapter(self) -> None:
+        first = self.project / "control-cards" / "chapter-0001.yaml"
+        first.write_text(first.read_text(encoding="utf-8").replace("goal: 找到真相", "goal: \"\""), encoding="utf-8")
+        output = Path(self.temp.name) / "should-not-exist.md"
+        result = run_script("build_context.py", self.project, "--output", output, ok=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("fill goal", result.stderr)
+        self.assertFalse(output.exists())
 
 
 if __name__ == "__main__":

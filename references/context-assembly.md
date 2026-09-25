@@ -27,6 +27,8 @@ python3 scripts/build_context.py /path/to/novel \
   --output /tmp/chapter-context.md
 ```
 
+上下文生成前会做本章写前检查：总纲中的故事承诺与结局方向、POV 人物资料、章卡目标/阻力/变化和引用资料须已填写。整本或连载项目还应先按 [写前规划与验收](planning-preflight.md) 检查对应范围。
+
 脚本会按固定顺序收集：
 
 1. `novel.yaml`
