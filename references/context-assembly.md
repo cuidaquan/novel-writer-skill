@@ -35,10 +35,13 @@ python3 scripts/build_context.py /path/to/novel \
 4. 当前章节控制卡
 5. 最近三章正文（可用 `--recent` 调整）
 6. 章卡引用和命令行追加的人物与世界观条目
+7. 当前题材已有的专门指导，以及 `style.modules` 和章卡 `style_modules` 选中的场景指导
 
 输出文件是临时上下文，不是新的事实源。正文、配置和 `state/state.json` 仍是权威来源；原文件变化后应重新生成，不继续使用旧包。
 
 `--compact-state` 只纳入本章人物、相关关系、未结束剧情线/伏笔及最近 20 条时间线和备注；重要旧事实若被省略，应回看完整状态或资料源。`--max-chars` 只检查大小，超限会失败，不会静默截断。修改旧章时可用 `--state` 指向 `state_rebuild.py --through` 生成的历史快照。
+
+隐藏真相在精简视图中只按章卡 `revelations.touch`、`revelations.reveal` 纳入。`truth` 是作者信息；`reader_known: false` 不能被叙述成读者已经确认的事实。人物能否据此行动还要看 `known_by`。生成器会把这条边界写入上下文清单，但正文和事务仍须人工核对。
 
 ## 选择人物与世界观
 

@@ -23,6 +23,7 @@ style:
     - 空泛哲理总结
     - 连续排比
     - 解释已经由动作表现出的情绪
+  modules: []
 ```
 
 ## 参数含义
@@ -41,6 +42,8 @@ style:
 ## 场景覆盖
 
 可在章节控制卡里临时覆盖局部参数。例如战斗场景可把 `sentence_length` 调短、`description_density` 降低、`violence` 调为 `concrete`；情感场景可提高 `interiority` 与停顿，但用户没有要求时不要改变整本小说的基调。
+
+需要额外的场景技法时，在 `style.modules` 设全书常用模块，或在章卡 `style_modules` 设本章模块；上下文生成器只加载选中的文件。当前可选 [suspense](style-modules/suspense.md) 与 [intimacy](style-modules/intimacy.md)。模块是对场景的补充，优先服从本书的参数和用户要求。
 
 ## 从样章提取风格
 

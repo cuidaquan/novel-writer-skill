@@ -27,6 +27,10 @@ threads:
 foreshadowing:
   plant: [f-014]
   pay_off: []
+revelations:
+  touch: [r-014]
+  reveal: []
+style_modules: [suspense]
 required_facts:
   - 仓库停电发生在 23:10 之后
 forbidden:
@@ -46,6 +50,8 @@ ending:
 4. 为什么读者会继续读下一章？
 
 整本项目还要分配每章 `target_words`，并用 `viewpoint`、`context.characters`、`context.world` 指定本章视角和必要资料。`scenes` 只写关键场景，不逐句锁死正文。实际结果可以偏离计划，但最终状态事务须按正文填写。
+
+有隐藏真相时，`revelations.touch` 指本章需要掌握但尚不揭晓的作者信息，`revelations.reveal` 指本章在正文中明确告知读者的信息。`project_check.py` 会核对计划揭示是否在同章事务中标为读者已知；若写作结果改变，应先按正文修订章卡，再提交事务。`style_modules` 只列本章需要的场景技法。
 
 如果无法回答第 3 个问题，先检查该章是否只是重复信息、过渡或无后果的展示。
 

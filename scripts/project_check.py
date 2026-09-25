@@ -7,6 +7,7 @@ import argparse
 import re
 from pathlib import Path
 
+from modules import module_paths
 from project_yaml import ProjectYAMLError, read_yaml
 from state_model import integer, nonempty, read_json, validate_state
 from state_rebuild import rebuild, transaction_paths
@@ -104,6 +105,12 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
             errors.append(f"viewpoint character has no character file: {character}")
     available_threads = set(mapping(initial.get("plot_threads")))
     available_foreshadowing = set(mapping(initial.get("foreshadowing")))
+    available_revelations = set(mapping(initial.get("revelations")))
+    for revelation_id, item in mapping(state.get("revelations")).items():
+        known_by = item.get("known_by", []) if isinstance(item, dict) else []
+        for character in known_by if isinstance(known_by, list) else []:
+            if character not in known_characters:
+                errors.append(f"revelations.{revelation_id}: unknown character in known_by: {character}")
 
     for number, path in sorted(chapters.items()):
         tx: dict = {}
@@ -112,6 +119,7 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
                 tx = read_json(journals[number - 1])
                 available_threads.update(mapping(tx.get("plot_thread_updates")))
                 available_foreshadowing.update(mapping(tx.get("foreshadowing_updates")))
+                available_revelations.update(mapping(tx.get("revelation_updates")))
             except ValueError as exc:
                 errors.append(str(exc))
         body = path.read_text(encoding="utf-8")
@@ -130,6 +138,10 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
         if not isinstance(card, dict):
             errors.append(f"{card_path}: root must be a mapping")
             continue
+        try:
+            module_paths(novel, card)
+        except ValueError as exc:
+            errors.append(f"{card_path.name}: {exc}")
         if card.get("chapter") != number:
             errors.append(f"{card_path.name}: chapter field must be {number}")
         if number <= current and nonempty(card.get("title")) and tx.get("chapter_title") != card["title"]:
@@ -170,6 +182,22 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
                 for item in id_list(foreshadowing.get(name, []), f"{card_path.name} foreshadowing.{name}", errors):
                     if item not in available_foreshadowing:
                         errors.append(f"{card_path.name}: unknown foreshadowing {item}")
+            if card.get("revelations") is not None and not isinstance(card["revelations"], dict):
+                errors.append(f"{card_path.name}: revelations must be a mapping")
+            revelations = mapping(card.get("revelations"))
+            planned_reveals: set[str] = set()
+            for name in ("touch", "reveal"):
+                for item in id_list(revelations.get(name, []), f"{card_path.name} revelations.{name}", errors):
+                    if item not in available_revelations:
+                        errors.append(f"{card_path.name}: unknown revelation {item}")
+                    if name == "reveal":
+                        planned_reveals.add(item)
+                        update = mapping(tx.get("revelation_updates")).get(item)
+                        if not isinstance(update, dict) or update.get("reader_known") is not True or update.get("revealed_chapter") != number:
+                            errors.append(f"{card_path.name}: planned reveal {item} is missing from chapter transaction")
+            for item, update in mapping(tx.get("revelation_updates")).items():
+                if isinstance(update, dict) and update.get("reader_known") is True and update.get("revealed_chapter") == number and item not in planned_reveals:
+                    errors.append(f"{card_path.name}: reader reveal {item} is missing from control card")
 
     length = mapping(novel.get("length"))
     target_chapters = length.get("target_chapters")

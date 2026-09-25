@@ -10,6 +10,7 @@ import re
 import tempfile
 from pathlib import Path
 
+from modules import module_paths
 from project_yaml import ProjectYAMLError, read_yaml
 from state_model import read_json, validate_state
 
@@ -124,6 +125,8 @@ def compact_state(state: dict, characters: list[str], card: dict) -> dict:
     thread_refs = set((threads.get("advance") or []) + (threads.get("touch") or []))
     clue_refs = set((foreshadowing.get("plant") or []) + (foreshadowing.get("pay_off") or []))
     character_refs = set(characters)
+    revelation_refs = card.get("revelations") if isinstance(card.get("revelations"), dict) else {}
+    secret_ids = set((revelation_refs.get("touch") or []) + (revelation_refs.get("reveal") or []))
     return {
         "schema_version": state["schema_version"],
         "project": state["project"],
@@ -131,6 +134,7 @@ def compact_state(state: dict, characters: list[str], card: dict) -> dict:
         "relationships": {key: value for key, value in state["relationships"].items() if any(name in key.split("__") for name in character_refs)},
         "plot_threads": {key: value for key, value in state["plot_threads"].items() if key in thread_refs or value.get("status", "open") != "resolved"},
         "foreshadowing": {key: value for key, value in state["foreshadowing"].items() if key in clue_refs or value.get("status", "planted") in {"planted", "active"}},
+        "revelations": {key: value for key, value in state.get("revelations", {}).items() if key in secret_ids},
         "timeline": state["timeline"][-20:],
         "continuity_notes": state["continuity_notes"][-20:],
     }
@@ -199,6 +203,13 @@ def main() -> int:
         raise SystemExit(str(exc)) from exc
     if not isinstance(card_data, dict) or card_data.get("chapter") != chapter:
         raise SystemExit(f"Control card {card} must have chapter: {chapter}")
+    try:
+        novel_data = read_yaml(novel)
+        if not isinstance(novel_data, dict):
+            raise ValueError("novel.yaml must be a mapping")
+        selected_modules = module_paths(novel_data, card_data)
+    except (ProjectYAMLError, ValueError) as exc:
+        raise SystemExit(str(exc)) from exc
     refs = card_data.get("context") or {}
     if not isinstance(refs, dict):
         raise SystemExit("Control card context must be an object")
@@ -206,6 +217,13 @@ def main() -> int:
     auto_world = refs.get("world", [])
     if not isinstance(auto_characters, list) or not isinstance(auto_world, list) or any(not isinstance(item, str) or not item for item in auto_characters + auto_world):
         raise SystemExit("Control card context.characters and context.world must be lists of non-empty strings")
+    revelation_refs = card_data.get("revelations") or {}
+    if not isinstance(revelation_refs, dict) or any(
+        not isinstance(revelation_refs.get(name, []), list)
+        or any(not isinstance(item, str) or not item for item in revelation_refs.get(name, []))
+        for name in ("touch", "reveal")
+    ):
+        raise SystemExit("Control card revelations.touch and revelations.reveal must be lists of non-empty ids")
     viewpoint = card_data.get("viewpoint")
     character_ids = list(dict.fromkeys(([viewpoint] if isinstance(viewpoint, str) and viewpoint else []) + auto_characters + args.character))
     world_names = list(dict.fromkeys(auto_world + args.world))
@@ -232,6 +250,7 @@ def main() -> int:
     world_paths = [resolve_world(project, name) for name in world_names]
     sources.extend(character_paths)
     sources.extend(world_paths)
+    sources.extend(selected_modules)
 
     deduplicated_sources: list[Path] = []
     seen: set[Path] = set()
@@ -250,6 +269,7 @@ def main() -> int:
         f"- Characters: {', '.join(character_ids) if character_ids else 'none'}",
         f"- World entries: {', '.join(world_names) if world_names else 'none'}",
         f"- State view: {'compact' if args.compact_state else 'full'}",
+        "- Information boundary: revelations.truth is author-only; reader_known=false is not confirmed to readers. A viewpoint character knows a truth only when listed in known_by. A planned reveal must be earned on the page before the transaction marks it reader-known.",
         "- Sources:",
     ]
     manifest.extend(f"  - {display_path(project, path)}" for path in deduplicated_sources)

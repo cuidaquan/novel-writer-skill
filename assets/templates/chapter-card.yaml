@@ -24,6 +24,12 @@ foreshadowing:
   plant: []
   pay_off: []
 
+revelations:
+  touch: []
+  reveal: []
+
+style_modules: []
+
 required_facts: []
 forbidden: []
 

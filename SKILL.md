@@ -33,6 +33,8 @@ description: Create, continue, or revise fiction projects—especially novels an
 
 每章动笔前，先确认本章结束时会发生什么**状态变化**。至少明确主冲突、推进的剧情线、人物关系变化、需要触碰的伏笔以及章末牵引。没有状态变化的场景通常应压缩、合并或承担更明确的角色功能。
 
+有隐藏真相的项目，把已确定的作者真相和知情边界记在 `state.revelations`；章卡列出本章触碰或揭示的条目。正文只能按当前视角与场景证据释放信息，写完后才把真正揭示的内容提交为读者已知。
+
 正文只写角色当下能够感知、推断或误解的内容。解释性背景优先拆进动作、选择、对话、环境和后果中，避免用旁白代替戏剧过程。
 
 章节写稳后生成事务 JSON，用 `scripts/state_commit.py` 更新状态；提交前核对事务只写正文真实发生的变化。每章运行 `scripts/project_check.py`；整本交付前运行 `scripts/project_check.py --complete`，并人工核对结构、人物弧和类型承诺。

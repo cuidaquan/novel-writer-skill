@@ -28,6 +28,7 @@ style:
   metaphor_density: low
   humor: low
   ending_mode: hook
+  modules: []
   forbidden: []
 
 content_limits: []

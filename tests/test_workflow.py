@@ -131,6 +131,86 @@ foreshadowing:
         self.assertIn("below 90%", result.stdout)
         self.assertIn("unresolved plot thread", result.stdout)
 
+    def test_revelation_boundary_and_selected_modules(self) -> None:
+        novel_path = self.project / "novel.yaml"
+        novel = novel_path.read_text(encoding="utf-8")
+        novel = novel.replace("primary: urban", "primary: mystery")
+        novel = novel.replace("secondary: []", "secondary: [romance]")
+        novel = novel.replace("modules: []", "modules: [suspense]")
+        novel_path.write_text(novel, encoding="utf-8")
+
+        state_dir = self.project / "state"
+        initial = json.loads((state_dir / "initial.json").read_text(encoding="utf-8"))
+        initial["revelations"] = {
+            "hidden": {"truth": "钥匙在旧城", "known_by": [], "reader_known": False},
+            "later": {"truth": "另一条秘密", "known_by": [], "reader_known": False},
+        }
+        for name in ("initial.json", "state.json"):
+            (state_dir / name).write_text(json.dumps(initial, ensure_ascii=False) + "\n", encoding="utf-8")
+
+        first_card = self.project / "control-cards" / "chapter-0001.yaml"
+        first_card.write_text(first_card.read_text(encoding="utf-8") + "revelations:\n  touch: [hidden]\n  reveal: []\nstyle_modules: [intimacy]\n", encoding="utf-8")
+        second_card = self.project / "control-cards" / "chapter-0002.yaml"
+        second_card.write_text(second_card.read_text(encoding="utf-8") + "revelations:\n  touch: []\n  reveal: [hidden]\n", encoding="utf-8")
+
+        context = run_script("build_context.py", self.project, "--compact-state").stdout
+        for name in ("genres/mystery.md", "genres/romance.md", "style-modules/suspense.md", "style-modules/intimacy.md", "钥匙在旧城", "reader_known=false"):
+            self.assertIn(name, context)
+        self.assertNotIn("另一条秘密", context)
+
+        first = self.transaction(1)
+        first["revelation_updates"] = {"hidden": {"known_by": ["hero"]}}
+        run_script("state_commit.py", state_dir / "state.json", self.save_transaction(1, first))
+        self.assertEqual(run_script("project_check.py", self.project).returncode, 0)
+
+        second = self.transaction(2)
+        second["revelation_updates"] = {"hidden": {"reader_known": True, "revealed_chapter": 2}}
+        (self.project / "chapters" / "chapter-0002.md").write_text("# 第二章\n钥匙在旧城。" + "故事" * 30, encoding="utf-8")
+        run_script("state_commit.py", state_dir / "state.json", self.save_transaction(2, second))
+        run_script("project_check.py", self.project, "--complete")
+        run_script("state_rebuild.py", self.project, "--output", Path(self.temp.name) / "replayed.json")
+
+        revoke = {"expected_chapter": 2, "chapter": 3, "summary": "错误撤销", "revelation_updates": {"hidden": {"reader_known": False}}}
+        external = Path(self.temp.name) / "revoke.json"
+        external.write_text(json.dumps(revoke, ensure_ascii=False), encoding="utf-8")
+        before = (state_dir / "state.json").read_bytes()
+        result = run_script("state_commit.py", state_dir / "state.json", external, ok=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("cannot become unknown", result.stderr)
+        self.assertEqual(before, (state_dir / "state.json").read_bytes())
+
+        revoke["revelation_updates"] = {"hidden": {"truth": "钥匙在新城"}}
+        external.write_text(json.dumps(revoke, ensure_ascii=False), encoding="utf-8")
+        result = run_script("state_commit.py", state_dir / "state.json", external, ok=False)
+        self.assertIn("truth cannot change", result.stderr)
+        self.assertEqual(before, (state_dir / "state.json").read_bytes())
+
+    def test_reveal_requires_matching_chapter_and_plan(self) -> None:
+        state_dir = self.project / "state"
+        initial = json.loads((state_dir / "initial.json").read_text(encoding="utf-8"))
+        initial["revelations"] = {"secret": {"truth": "门后有人", "known_by": [], "reader_known": False}}
+        for name in ("initial.json", "state.json"):
+            (state_dir / name).write_text(json.dumps(initial, ensure_ascii=False) + "\n", encoding="utf-8")
+        tx = self.transaction(1)
+        tx["revelation_updates"] = {"secret": {"reader_known": True, "revealed_chapter": 2}}
+        result = run_script("state_commit.py", state_dir / "state.json", self.save_transaction(1, tx), ok=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("must equal 1", result.stderr)
+        self.assertEqual(initial, json.loads((state_dir / "state.json").read_text(encoding="utf-8")))
+
+        tx["revelation_updates"]["secret"]["revealed_chapter"] = 1
+        run_script("state_commit.py", state_dir / "state.json", self.save_transaction(1, tx))
+        result = run_script("project_check.py", self.project, ok=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("missing from control card", result.stdout)
+
+    def test_unknown_style_module_is_rejected(self) -> None:
+        card_path = self.project / "control-cards" / "chapter-0001.yaml"
+        card_path.write_text(card_path.read_text(encoding="utf-8") + "style_modules: [missing-module]\n", encoding="utf-8")
+        result = run_script("build_context.py", self.project, ok=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unknown style module", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

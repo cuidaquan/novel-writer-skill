@@ -13,6 +13,7 @@
 - `relationships`：关系强度、公开状态或关键变化。
 - `plot_threads`：主线/支线的当前状态、最近推进和未解决压力。
 - `foreshadowing`：伏笔的埋设、激活、回收或放弃状态。
+- `revelations`：已确定的作者真相、当前知情角色，以及读者是否已明确知道。线索已出现但尚不能确认答案时保持 `reader_known: false`。
 - `timeline`：会影响连续性的事件记录。
 - `continuity_notes`：难以结构化但必须记住的约束。
 
@@ -38,6 +39,9 @@
   "foreshadowing_updates": {
     "f-014": {"status": "planted", "note": "最后一页缺失"}
   },
+  "revelation_updates": {
+    "r-014": {"known_by": ["lin_zhou"], "reader_known": true, "revealed_chapter": 12}
+  },
   "timeline_events": [
     {"id": "ch12-warehouse-blackout", "time": "23:10", "event": "仓库停电"}
   ],
@@ -46,6 +50,8 @@
 ```
 
 `scripts/state_commit.py` 会检查当前状态、事务字段和候选状态，在通过校验后把事务保存为 `state/transactions/chapter-NNNN.json` 并更新 state.json。已有章节不能重复提交。
+
+一个未公开条目可以在第 0 章状态中写成 `{"truth": "账本最后一页在仓库", "known_by": [], "reader_known": false}`。角色获知时更新 `known_by`；读者在正文中明确获知时同章设 `reader_known: true` 和 `revealed_chapter`。章节事务不能静默更改已确定的 `truth`、撤销读者已知或删除条目；如重写旧章改变真相，先审阅后续正文与事务，再按重建流程处理。
 
 ## 重写旧章
 

@@ -2,6 +2,8 @@
 
 `genre` 用来约束读者期待和叙事承诺，不是固定公式。允许一个主类型搭配最多两个辅助类型，例如 `mystery + urban + romance`。
 
+项目化写作时，`build_context.py` 会按 `genre.primary` 和 `genre.secondary` 自动加载已有的专门模块。目前 [悬疑](genres/mystery.md) 和 [言情](genres/romance.md) 有专门指导；其他类型使用下方的通用约束，不因没有专门模块而中断。
+
 ## 常用类型
 
 ### mystery / 悬疑推理

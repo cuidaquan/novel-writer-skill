@@ -17,6 +17,7 @@ MAPPING_UPDATES = {
     "relationships": "relationship_updates",
     "plot_threads": "plot_thread_updates",
     "foreshadowing": "foreshadowing_updates",
+    "revelations": "revelation_updates",
 }
 
 
@@ -72,7 +73,7 @@ def validate_state(state: dict) -> list[str]:
     if not integer(project.get("current_volume"), 1):
         errors.append("project.current_volume must be a positive integer")
     for section in MAPPING_UPDATES:
-        mapping = state.get(section)
+        mapping = state.get(section, {}) if section == "revelations" else state.get(section)
         if not isinstance(mapping, dict):
             errors.append(f"{section} must be an object")
             continue
@@ -90,6 +91,21 @@ def validate_state(state: dict) -> list[str]:
                     errors.append(f"foreshadowing.{key}.resolved_chapter is required")
                 if status == "resolved" and integer(current) and integer(item.get("resolved_chapter"), 1) and item["resolved_chapter"] > current:
                     errors.append(f"foreshadowing.{key}.resolved_chapter is in the future")
+            if section == "revelations":
+                if not nonempty(item.get("truth")):
+                    errors.append(f"revelations.{key}.truth must be a non-empty string")
+                known_by = item.get("known_by")
+                if not isinstance(known_by, list) or any(not nonempty(name) for name in known_by) or len(known_by) != len(set(known_by)):
+                    errors.append(f"revelations.{key}.known_by must be a list of distinct character ids")
+                reader_known = item.get("reader_known")
+                if type(reader_known) is not bool:
+                    errors.append(f"revelations.{key}.reader_known must be a boolean")
+                elif reader_known:
+                    revealed = item.get("revealed_chapter")
+                    if not integer(revealed, 1) or (integer(current) and revealed > current):
+                        errors.append(f"revelations.{key}.revealed_chapter must be between 1 and current_chapter")
+                elif "revealed_chapter" in item:
+                    errors.append(f"revelations.{key}.revealed_chapter requires reader_known=true")
     timeline = state.get("timeline")
     if not isinstance(timeline, list):
         errors.append("timeline must be a list")
@@ -157,8 +173,24 @@ def apply_transaction(state: dict, tx: dict) -> dict:
     if errors:
         raise ValueError("invalid transaction: " + "; ".join(errors))
     result = copy.deepcopy(state)
+    if tx.get("revelation_updates"):
+        result.setdefault("revelations", {})
     for section, field in MAPPING_UPDATES.items():
         for key, value in tx.get(field, {}).items():
+            if section == "revelations" and value is None:
+                raise ValueError(f"revelations.{key} cannot be deleted by a chapter transaction")
+            if section == "revelations" and key in result[section]:
+                previous = result[section][key]
+                if "truth" in value and value["truth"] != previous["truth"]:
+                    raise ValueError(f"revelations.{key}.truth cannot change in a chapter transaction")
+                if previous["reader_known"] and value.get("reader_known") is False:
+                    raise ValueError(f"revelations.{key} cannot become unknown to the reader")
+                if previous["reader_known"] and "revealed_chapter" in value and value["revealed_chapter"] != previous["revealed_chapter"]:
+                    raise ValueError(f"revelations.{key}.revealed_chapter cannot change")
+            if section == "revelations" and value.get("reader_known") is True:
+                previous = result[section].get(key, {})
+                if not previous.get("reader_known") and value.get("revealed_chapter") != current + 1:
+                    raise ValueError(f"revelations.{key}.revealed_chapter must equal {current + 1} when revealed")
             if value is None:
                 result[section].pop(key, None)
             elif isinstance(result[section].get(key), dict):
