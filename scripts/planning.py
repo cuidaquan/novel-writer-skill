@@ -141,6 +141,8 @@ def check_plan(project: Path, mode: str, chapter: int | None = None, state_path:
         return [str(exc)]
     if not isinstance(novel, dict):
         return ["novel.yaml must be a mapping"]
+    if novel.get("schema_version") != 1:
+        errors.append("novel.yaml schema_version must be 1")
     errors.extend(validate_state(state))
     if errors:
         return errors

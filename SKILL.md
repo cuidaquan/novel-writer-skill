@@ -63,7 +63,7 @@ novel-project/
     └── transactions/
 ```
 
-`state/initial.json` 和逐章事务可重放出当前状态。Markdown 设定、人物卡和总结用于阅读与创作；发现冲突时先根据正文与用户说明确定事实，再同步修正状态和受影响的事务。
+`state/initial.json` 和逐章事务可重放出当前状态。Markdown 设定、人物卡和总结用于阅读与创作；发现冲突时先根据正文与用户说明确定事实，再同步修正状态和受影响的事务。新建项目的公开字段、错误级别与 `schema_version` 见 [项目契约](references/project-contract.md)。
 
 ## 写作交付
 

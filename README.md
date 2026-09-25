@@ -85,6 +85,7 @@ python3 scripts/project_check.py /path/to/my-novel
 
 ## 支持环境
 
+- 当前版本 1.0.0；变更见 [CHANGELOG.md](CHANGELOG.md)，公开字段见 [项目契约](references/project-contract.md)，已知限制见 [已知限制](references/known-limitations.md)。
 - Python 3.9 及以上；脚本只用标准库，不安装第三方包。
 - 路径处理使用 `pathlib`，展示路径统一用正斜杠；Windows 上命令分隔符与本地路径写法需按 shell 调整。
 - 自动化测试在 macOS/POSIX 上运行；Windows 未纳入本仓库的自动化验证，限制如实标注，不以文档代替验证。

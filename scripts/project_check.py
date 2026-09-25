@@ -59,6 +59,8 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
         return [str(exc)], warnings, stats
     if not isinstance(novel, dict):
         return ["novel.yaml must be a mapping"], warnings, stats
+    if novel.get("schema_version") != 1:
+        errors.append("novel.yaml schema_version must be 1")
     errors.extend(validate_state(state))
     errors.extend(f"initial: {error}" for error in validate_state(initial))
     if mapping(initial.get("project")).get("current_chapter") != 0:
