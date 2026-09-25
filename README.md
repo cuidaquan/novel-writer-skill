@@ -20,6 +20,9 @@
 - 提交前重跑确定性审查，未放行的 BLOCK 会拒绝写入；刻意命中可用带理由的 `--allow` 放行并留痕，完结校验会复核已提交章节。
 - 完结时收口类型承诺：仍标为延后的承诺会被 `--complete` 列出，`dropped`（需理由）视为作者已明确放弃。
 - 精简上下文分层：本章引用与交接承诺保完整，其余活跃条目按上限摘要；`--active-limit` 可控，`--fit` 逐级裁剪。
+- 章卡字段按“脚本校验 / 人工核对 / 仅上下文”分级；`scenes`、`required_facts`、`forbidden`、`ending` 的结构由脚本校验，语义兑现仍由作者核对。
+- 章卡可用 `style_override` 声明本章局部文风覆盖；`style_report` 把与声明一致的偏移标为覆盖而不是漂移。
+- `style_report` 对照近期定稿章的开场/结尾签名，提示连续同类开场或悬念句；`style_profile` 输出词频、标点频率与字符型例比（只作观察，不设阈值）。
 - 写正文前可分别检查整本规划或连载当前阶段；未就绪的章卡不能生成下一章上下文。
 - 支持悬疑、惊悚、言情、奇幻、仙侠、科幻、历史、都市等题材，也允许组合。
 - 改稿时按结构、人物、对话、描写、语言和连续性的顺序检查。
@@ -88,7 +91,7 @@ python3 scripts/project_check.py /path/to/my-novel
 
 ## 支持环境
 
-- 当前版本 1.1.0；变更见 [CHANGELOG.md](CHANGELOG.md)，公开字段见 [项目契约](references/project-contract.md)，已知限制见 [已知限制](references/known-limitations.md)。
+- 当前版本 1.2.0；变更见 [CHANGELOG.md](CHANGELOG.md)，公开字段见 [项目契约](references/project-contract.md)，已知限制见 [已知限制](references/known-limitations.md)。
 - Python 3.9 及以上；脚本只用标准库，不安装第三方包。
 - 路径处理使用 `pathlib`，展示路径统一用正斜杠；Windows 上命令分隔符与本地路径写法需按 shell 调整。
 - 自动化测试在 macOS/POSIX 上运行；Windows 未纳入本仓库的自动化验证，限制如实标注，不以文档代替验证。

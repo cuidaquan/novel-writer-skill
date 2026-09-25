@@ -2,6 +2,13 @@
 
 版本对应 .doc/roadmap-v0.6-v1.0.md 的路线。公开字段契约见 [references/project-contract.md](references/project-contract.md)。
 
+## 1.2.0
+- 章卡字段责任分级与客观校验：`scenes`、`required_facts`、`forbidden`、`ending`、`title`、`style_override` 的结构由脚本校验，语义兑现明确为人工；章卡 `forbidden` 命中给出 NOTE。
+- 章卡 `style_override`：声明本章局部文风覆盖，`style_report` 把与声明一致的偏移标为 `style-override` 而不是漂移。
+- 文风校准：新增悬疑、言情、短句与中等句长样例及阈值行为记录；约 ±25% 的偏移列为已知漏报。
+- 跨章公式：开场/结尾签名与近期定稿章对照，提示连续同类开场或悬念句。
+- 词频、标点频率与字符型例比：`style_profile`/ `style_report` 输出观察值，不设阈值。
+
 ## 1.1.0
 - 提交门禁：`state_commit.py` 重跑确定性审查，未放行的 BLOCK 拒绝写入；`--allow`/ `--reason` 带记录放行，`project_check.py` 复核已提交章节。
 - 占位检测分级：硬标记阻断，`待定` 等歧义词只提示，避免误伤正常台词。
