@@ -2,6 +2,12 @@
 
 版本对应 .doc/roadmap-v0.6-v1.0.md 的路线。公开字段契约见 [references/project-contract.md](references/project-contract.md)。
 
+## 1.3.0
+- `progress_report.py`：进度、剩余章节、按均速的预计完稿与未收束条目计数。
+- `state_view.py --write/--check`：由 state 渲染派生视图（明确标注非真相源），并检测派生文件是否陈旧。
+- `stage_review.py`：聚合进度、交接、承诺与文风画像，各段标明来源脚本。
+- `build_context.py` 清单标注题材模块的覆盖与缺口。
+
 ## 1.2.0
 - 章卡字段责任分级与客观校验：`scenes`、`required_facts`、`forbidden`、`ending`、`title`、`style_override` 的结构由脚本校验，语义兑现明确为人工；章卡 `forbidden` 命中给出 NOTE。
 - 章卡 `style_override`：声明本章局部文风覆盖，`style_report` 把与声明一致的偏移标为 `style-override` 而不是漂移。
