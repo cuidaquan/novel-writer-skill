@@ -46,7 +46,8 @@ def main() -> int:
 
     baseline = review.baseline_chapters(project, chapter.state, chapter.number, args.baseline)
     findings = review.style_findings(chapter, baseline)
-    print(review.render_style_report(chapter, baseline, findings))
+    cross = review.cross_chapter_findings(chapter, baseline)
+    print(review.render_style_report(chapter, baseline, findings, cross))
     return 0
 
 

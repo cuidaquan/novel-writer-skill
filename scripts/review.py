@@ -567,6 +567,89 @@ def style_findings(chapter: Chapter, baseline: StyleBaseline) -> list[Finding]:
     return findings
 
 
+HOOK_PHRASES = ("他不知道的是", "她不知道的是", "然而", "但", "与此同时", "此刻", "而在另一边")
+
+
+def first_prose_line(lines: list[tuple[int, str]]) -> str:
+    """First non-heading paragraph, so chapter numbers do not count as an opening."""
+    for _, line in lines:
+        if not line.startswith("#"):
+            return line
+    return lines[0][1] if lines else ""
+
+
+def _chapter_signatures(path: Path) -> tuple[str, str, bool] | None:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    lines = prose_metrics.paragraphs(text)
+    if not lines:
+        return None
+    first = prose_metrics.opening_signature(first_prose_line(lines))
+    last_line = lines[-1][1]
+    return first, prose_metrics.ending_signature(last_line), any(phrase in last_line for phrase in HOOK_PHRASES)
+
+
+def cross_chapter_findings(chapter: Chapter, baseline: StyleBaseline) -> list[Finding]:
+    """Advisory: the target repeats the opening or ending formula of recent chapters."""
+    if chapter.body_path is None or not baseline.available or not baseline.paths:
+        return []
+    target_lines = prose_metrics.paragraphs(chapter.body_text)
+    if not target_lines:
+        return []
+    target_first = prose_metrics.opening_signature(first_prose_line(target_lines))
+    target_last_line = target_lines[-1][1]
+    target_last = prose_metrics.ending_signature(target_last_line)
+    target_hook = any(phrase in target_last_line for phrase in HOOK_PHRASES)
+
+    opening_matches: list[int] = []
+    ending_matches: list[int] = []
+    hook_matches: list[int] = []
+    for number, path in zip(baseline.chapters, baseline.paths):
+        signatures = _chapter_signatures(path)
+        if signatures is None:
+            continue
+        first, last, hook = signatures
+        if target_first and first == target_first:
+            opening_matches.append(number)
+        if target_last and last == target_last:
+            ending_matches.append(number)
+        if target_hook and hook:
+            hook_matches.append(number)
+
+    path = chapter.body_path
+    findings: list[Finding] = []
+    if len(opening_matches) >= 2:
+        findings.append(
+            Finding(
+                "NOTE", "cross-chapter-opening", path, 1,
+                f"opening signature {target_first!r} also opens chapters {', '.join(map(str, opening_matches))}",
+                "the same first characters open several recent chapters",
+                "vary how chapters enter their scene.",
+            )
+        )
+    if len(ending_matches) >= 2:
+        findings.append(
+            Finding(
+                "NOTE", "cross-chapter-ending", path, 1,
+                f"ending signature {target_last!r} also ends chapters {', '.join(map(str, ending_matches))}",
+                "the same closing characters end several recent chapters",
+                "vary the closing beat.",
+            )
+        )
+    if target_hook and len(hook_matches) >= 2:
+        findings.append(
+            Finding(
+                "NOTE", "cross-chapter-hook", path, 1,
+                f"the closing line uses a hook formula also used by chapters {', '.join(map(str, hook_matches))}",
+                "a hook phrase from the shared list repeats across chapters",
+                "keep it only if the repetition is intentional.",
+            )
+        )
+    return findings
+
+
 def format_finding(project: Path, finding: Finding) -> str:
     location = display_path(project, finding.path)
     if finding.line >= 1:
@@ -610,7 +693,7 @@ def render_report(chapter: Chapter, findings: list[Finding]) -> str:
     return "\n".join(lines)
 
 
-def render_style_report(chapter: Chapter, baseline: StyleBaseline, findings: list[Finding]) -> str:
+def render_style_report(chapter: Chapter, baseline: StyleBaseline, findings: list[Finding], cross_findings: list[Finding] | None = None) -> str:
     target = prose_metrics.metrics(chapter.body_text)
     lines = [f"# Style Report: chapter {chapter.number}", ""]
     lines.append(f"- Sample: {display_path(chapter.project, chapter.body_path)}")
@@ -679,6 +762,13 @@ def render_style_report(chapter: Chapter, baseline: StyleBaseline, findings: lis
     lines.append(f"## Drift hints ({len(findings)})")
     if findings:
         lines.extend(format_finding(chapter.project, finding) for finding in findings)
+    else:
+        lines.append("(none)")
+    lines.append("")
+    cross = cross_findings or []
+    lines.append(f"## Cross-chapter patterns ({len(cross)})")
+    if cross:
+        lines.extend(format_finding(chapter.project, finding) for finding in cross)
     else:
         lines.append("(none)")
     lines.append("")

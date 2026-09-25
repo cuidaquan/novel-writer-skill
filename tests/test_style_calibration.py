@@ -156,5 +156,19 @@ class StyleCalibration(unittest.TestCase):
         self.assertIn("[style-dialogue-ratio]", report)
 
 
+    def test_repeated_cross_chapter_formulas_are_reported(self) -> None:
+        line = "他推开那扇门，听见里面传来低低的呼吸声。"
+        lines = [line] * 16
+        report = self.report(self.build("formula", lines, lines))
+        self.assertIn("## Cross-chapter patterns", report)
+        self.assertIn("[cross-chapter-opening]", report)
+        self.assertIn("[cross-chapter-ending]", report)
+
+    def test_varied_openings_and_endings_are_not_flagged(self) -> None:
+        report = self.report(self.build("varied", LONG_LINES, MEDIUM_LINES))
+        patterns = report.split("## Cross-chapter patterns", 1)[1].split("These hints")[0]
+        self.assertIn("(none)", patterns)
+
+
 if __name__ == "__main__":
     unittest.main()

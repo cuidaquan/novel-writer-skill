@@ -51,8 +51,9 @@ def main() -> int:
     if args.style:
         baseline = review.baseline_chapters(project, chapter.state, chapter.number, args.baseline)
         style_findings = review.style_findings(chapter, baseline)
+        cross_findings = review.cross_chapter_findings(chapter, baseline)
         print()
-        print(review.render_style_report(chapter, baseline, style_findings))
+        print(review.render_style_report(chapter, baseline, style_findings, cross_findings))
 
     return 1 if any(finding.level == "BLOCK" for finding in findings) else 0
 
