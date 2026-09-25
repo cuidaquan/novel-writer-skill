@@ -2,6 +2,8 @@
 
 `state/state.json` 只保存“已经在故事中成立、后续章节需要记住”的事实。不要把所有设定都塞进去；静态世界观继续放在 `world/`，详细人物背景继续放在 `characters/`。
 
+`state/initial.json` 是第 0 章的事实快照。初始化脚本会创建它；第一章提交前若补充初始状态，须同时更新 initial.json 与 state.json。此后事务日志是状态变化的历史，`state/state.json` 是重放得到的当前快照。
+
 ## 状态结构
 
 模板包含：
@@ -43,7 +45,26 @@
 }
 ```
 
-`scripts/state_commit.py` 会检查 `expected_chapter` 与当前状态一致，并要求新章节恰好是下一章，避免跳章覆盖。重写已存在章节时，不要直接伪造下一章事务；先人工核对受影响的后续状态，再决定如何回滚或重建。
+`scripts/state_commit.py` 会检查当前状态、事务字段和候选状态，在通过校验后把事务保存为 `state/transactions/chapter-NNNN.json` 并更新 state.json。已有章节不能重复提交。
+
+## 重写旧章
+
+例如重写第 17 章：
+
+```bash
+python3 scripts/state_rebuild.py /path/to/novel --through 16 --output /tmp/before-17.json
+python3 scripts/build_context.py /path/to/novel --chapter 17 --state /tmp/before-17.json --output /tmp/ch17-context.md
+```
+
+依据改后的正文修改 `state/transactions/chapter-0017.json`。逐章核对 18 章至当前章的正文与事务：改动可能让后续人物知识、伏笔或时间线失效，脚本只能验证结构，不能替作者判断剧情因果。核对后先预览重放结果，再写回当前状态：
+
+```bash
+python3 scripts/state_rebuild.py /path/to/novel --output /tmp/rebuilt.json
+python3 scripts/state_rebuild.py /path/to/novel --write
+python3 scripts/project_check.py /path/to/novel
+```
+
+v0.2 项目若没有 `state/initial.json`，须从可信的第 0 章备份恢复初始事实快照；不要把当前状态改成 0 章冒充初始状态。也可在确认旧备份后用 `state_rebuild.py --base <snapshot>` 预览重放。
 
 ## 何时记入状态
 

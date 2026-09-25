@@ -7,8 +7,16 @@
 ```yaml
 chapter: 12
 title: 暂定标题
+viewpoint: lin-zhou
+target_words: 3200
 goal: 主角必须拿到账本，但不能暴露真实身份
 conflict: 对手提前封锁仓库
+context:
+  characters: [lin-zhou, chen-yu]
+  world: [locations/old-warehouse]
+scenes:
+  - 潜入仓库
+  - 搭档发现主角隐瞒信息
 change:
   plot: 主线从“怀疑”推进到“得到可验证证据”
   character: 主角第一次主动欺骗搭档
@@ -36,6 +44,8 @@ ending:
 2. 什么力量阻止他？
 3. 到章末，什么事实、关系或选择发生了不可忽略的变化？
 4. 为什么读者会继续读下一章？
+
+整本项目还要分配每章 `target_words`，并用 `viewpoint`、`context.characters`、`context.world` 指定本章视角和必要资料。`scenes` 只写关键场景，不逐句锁死正文。实际结果可以偏离计划，但最终状态事务须按正文填写。
 
 如果无法回答第 3 个问题，先检查该章是否只是重复信息、过渡或无后果的展示。
 

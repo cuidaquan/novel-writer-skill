@@ -6,8 +6,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
+
+from project_yaml import ProjectYAMLError, read_yaml
+from state_model import read_json, validate_state
 
 
 def parse_args() -> argparse.Namespace:
@@ -30,6 +34,9 @@ def parse_args() -> argparse.Namespace:
         help="World entry path relative to world/; repeat as needed",
     )
     parser.add_argument("--output", type=Path, help="Write bundle to a file instead of stdout")
+    parser.add_argument("--state", type=Path, help="Use a reviewed historical state snapshot for revision")
+    parser.add_argument("--compact-state", action="store_true", help="Include a focused state view instead of all history")
+    parser.add_argument("--max-chars", type=int, help="Fail if the generated context exceeds this many characters")
     return parser.parse_args()
 
 
@@ -61,12 +68,14 @@ def numbered_file(directory: Path, prefix: str, number: int, extensions: tuple[s
 
 
 def resolve_character(project: Path, character_id: str) -> Path:
-    if not character_id or Path(character_id).name != character_id:
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", character_id):
         raise SystemExit(f"Invalid character id: {character_id!r}")
     directory = project / "characters"
     for extension in ("yaml", "yml", "md"):
         candidate = directory / f"{character_id}.{extension}"
         if candidate.is_file():
+            if not candidate.resolve().is_relative_to(directory.resolve()):
+                raise SystemExit(f"Character file escapes characters/: {character_id}")
             return candidate
     raise SystemExit(f"Character file not found for id: {character_id}")
 
@@ -97,9 +106,34 @@ def optional_volume_outline(project: Path, volume: object) -> Path | None:
 
 
 def source_block(project: Path, path: Path) -> str:
-    relative = path.relative_to(project).as_posix()
+    relative = display_path(project, path)
     content = read_text(path).rstrip()
     return f"## Source: `{relative}`\n\n<source path=\"{relative}\">\n{content}\n</source>\n"
+
+
+def display_path(project: Path, path: Path) -> str:
+    try:
+        return path.relative_to(project).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def compact_state(state: dict, characters: list[str], card: dict) -> dict:
+    threads = card.get("threads") if isinstance(card.get("threads"), dict) else {}
+    foreshadowing = card.get("foreshadowing") if isinstance(card.get("foreshadowing"), dict) else {}
+    thread_refs = set((threads.get("advance") or []) + (threads.get("touch") or []))
+    clue_refs = set((foreshadowing.get("plant") or []) + (foreshadowing.get("pay_off") or []))
+    character_refs = set(characters)
+    return {
+        "schema_version": state["schema_version"],
+        "project": state["project"],
+        "characters": {key: value for key, value in state["characters"].items() if key in character_refs},
+        "relationships": {key: value for key, value in state["relationships"].items() if any(name in key.split("__") for name in character_refs)},
+        "plot_threads": {key: value for key, value in state["plot_threads"].items() if key in thread_refs or value.get("status", "open") != "resolved"},
+        "foreshadowing": {key: value for key, value in state["foreshadowing"].items() if key in clue_refs or value.get("status", "planted") in {"planted", "active"}},
+        "timeline": state["timeline"][-20:],
+        "continuity_notes": state["continuity_notes"][-20:],
+    }
 
 
 def atomic_write(path: Path, content: str) -> None:
@@ -124,16 +158,24 @@ def main() -> int:
     args = parse_args()
     if args.recent < 0:
         raise SystemExit("--recent must be zero or greater")
+    if args.max_chars is not None and args.max_chars < 1:
+        raise SystemExit("--max-chars must be positive")
 
     project = args.project.expanduser().resolve()
     if not project.is_dir():
         raise SystemExit(f"Project directory not found: {project}")
 
     novel = project / "novel.yaml"
-    state_path = project / "state" / "state.json"
+    state_path = (args.state or project / "state" / "state.json").expanduser().resolve()
     master_outline = project / "outline" / "master.md"
 
-    state = json.loads(read_text(state_path))
+    try:
+        state = read_json(state_path)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    state_errors = validate_state(state)
+    if state_errors:
+        raise SystemExit("invalid state: " + "; ".join(state_errors))
     current = state.get("project", {}).get("current_chapter")
     if not isinstance(current, int) or current < 0:
         raise SystemExit("state.project.current_chapter must be a non-negative integer")
@@ -151,6 +193,22 @@ def main() -> int:
             f"Control card for chapter {chapter} not found. "
             f"Expected control-cards/chapter-{chapter:04d}.yaml or another supported numbered form."
         )
+    try:
+        card_data = read_yaml(card)
+    except ProjectYAMLError as exc:
+        raise SystemExit(str(exc)) from exc
+    if not isinstance(card_data, dict) or card_data.get("chapter") != chapter:
+        raise SystemExit(f"Control card {card} must have chapter: {chapter}")
+    refs = card_data.get("context") or {}
+    if not isinstance(refs, dict):
+        raise SystemExit("Control card context must be an object")
+    auto_characters = refs.get("characters", [])
+    auto_world = refs.get("world", [])
+    if not isinstance(auto_characters, list) or not isinstance(auto_world, list) or any(not isinstance(item, str) or not item for item in auto_characters + auto_world):
+        raise SystemExit("Control card context.characters and context.world must be lists of non-empty strings")
+    viewpoint = card_data.get("viewpoint")
+    character_ids = list(dict.fromkeys(([viewpoint] if isinstance(viewpoint, str) and viewpoint else []) + auto_characters + args.character))
+    world_names = list(dict.fromkeys(auto_world + args.world))
 
     sources: list[Path] = [novel, state_path, master_outline]
     volume_outline = optional_volume_outline(project, state.get("project", {}).get("current_volume"))
@@ -170,8 +228,8 @@ def main() -> int:
         recent_chapters.append(number)
         sources.append(path)
 
-    character_paths = [resolve_character(project, character_id) for character_id in args.character]
-    world_paths = [resolve_world(project, name) for name in args.world]
+    character_paths = [resolve_character(project, character_id) for character_id in character_ids]
+    world_paths = [resolve_world(project, name) for name in world_names]
     sources.extend(character_paths)
     sources.extend(world_paths)
 
@@ -189,16 +247,25 @@ def main() -> int:
         f"- Target chapter: {chapter}",
         f"- State current chapter: {current}",
         f"- Recent chapters: {', '.join(map(str, recent_chapters)) if recent_chapters else 'none'}",
-        f"- Characters: {', '.join(args.character) if args.character else 'none'}",
-        f"- World entries: {', '.join(args.world) if args.world else 'none'}",
+        f"- Characters: {', '.join(character_ids) if character_ids else 'none'}",
+        f"- World entries: {', '.join(world_names) if world_names else 'none'}",
+        f"- State view: {'compact' if args.compact_state else 'full'}",
         "- Sources:",
     ]
-    manifest.extend(f"  - {path.relative_to(project).as_posix()}" for path in deduplicated_sources)
+    manifest.extend(f"  - {display_path(project, path)}" for path in deduplicated_sources)
     manifest.append("")
 
-    bundle = "\n".join(manifest) + "\n" + "\n".join(
-        source_block(project, path) for path in deduplicated_sources
-    )
+    blocks: list[str] = []
+    for path in deduplicated_sources:
+        if path == state_path and args.compact_state:
+            relative = display_path(project, path)
+            focused = json.dumps(compact_state(state, character_ids, card_data), ensure_ascii=False, indent=2)
+            blocks.append(f"## Source: `{relative}` (focused view)\n\n<source path=\"{relative}\">\n{focused}\n</source>\n")
+        else:
+            blocks.append(source_block(project, path))
+    bundle = "\n".join(manifest) + "\n" + "\n".join(blocks)
+    if args.max_chars and len(bundle) > args.max_chars:
+        raise SystemExit(f"Context has {len(bundle)} characters, above --max-chars={args.max_chars}; reduce --recent or use --compact-state")
 
     if args.output:
         atomic_write(args.output, bundle)

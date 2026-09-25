@@ -5,12 +5,14 @@ description: Create, continue, or revise fiction projects—especially novels an
 
 # Novel Writer
 
-把小说当作一个持续演化的项目，而不是一次性的长 Prompt。优先维护“创作配置”和“故事事实”两类信息：`novel.yaml` 决定题材、文风、视角和节奏；`state/state.json` 记录已经在正文中成立的事实。
+按用户要求选择创作规模。短篇可直接交付正文；需要整本、连载或长期改稿时，维护 `novel.yaml` 的创作配置和 `state/state.json` 的已成立事实。
 
 ## 选择工作模式
 
-- **新建小说**：先读取 [references/workflow.md](references/workflow.md) 的初始化流程。需要实际创建项目目录时，优先运行 `scripts/init_novel.py`，再按用户要求补充设定。
-- **续写章节**：先读 [references/context-assembly.md](references/context-assembly.md) 组装当前章需要的上下文，再读 [references/chapter-cards.md](references/chapter-cards.md) 与 [references/continuity-state.md](references/continuity-state.md)。项目化续写可用 `scripts/build_context.py` 生成可审查的上下文包。
+- **短篇正文**：按 [references/workflow.md](references/workflow.md) 的轻量流程写作；用户没有要求项目文件时，直接交付正文。
+- **新建项目或整本小说**：先读 [references/workflow.md](references/workflow.md)；要求完整成书时还须读 [references/full-book-workflow.md](references/full-book-workflow.md)，按章推进并通过完成校验。
+- **续写章节**：先读 [references/context-assembly.md](references/context-assembly.md) 装配上下文，再读 [references/chapter-cards.md](references/chapter-cards.md) 与 [references/continuity-state.md](references/continuity-state.md)。
+- **重写旧章节**：读 [references/continuity-state.md](references/continuity-state.md)，用 `scripts/state_rebuild.py` 得到旧章之前的事实快照；重写后核对、重放后续事务。
 - **定义或调整文风**：读 [references/style-system.md](references/style-system.md)。把文风拆成可描述的参数，不把某个作者姓名当作文风配置本身。
 - **选择或混合题材**：读 [references/genre-system.md](references/genre-system.md)。只加载当前题材真正需要的约束。
 - **改稿/审稿**：读 [references/revision-quality.md](references/revision-quality.md)，先修剧情和场景，再修语言。
@@ -20,10 +22,10 @@ description: Create, continue, or revise fiction projects—especially novels an
 发生冲突时按以下优先级处理：
 
 1. 用户本轮明确要求。
-2. 项目 `novel.yaml`。
-3. 当前章节控制卡。
-4. 题材与文风 reference。
-5. 本 Skill 的默认建议。
+2. 已确认的正文事实和用户手工修改。
+3. 项目 `novel.yaml` 与 `state/state.json`。
+4. 当前章节控制卡。
+5. 题材与文风 reference。
 
 不要为了套模板覆盖已经成立的人物设定、时间线或用户手工修改。
 
@@ -33,7 +35,7 @@ description: Create, continue, or revise fiction projects—especially novels an
 
 正文只写角色当下能够感知、推断或误解的内容。解释性背景优先拆进动作、选择、对话、环境和后果中，避免用旁白代替戏剧过程。
 
-章节写完后再更新状态。不要在正文尚未稳定时提前修改事实源；需要回写时生成事务 JSON，并使用 `scripts/state_commit.py` 原子地更新 `state/state.json`。提交后运行 `scripts/state_check.py`。
+章节写稳后生成事务 JSON，用 `scripts/state_commit.py` 更新状态；提交前核对事务只写正文真实发生的变化。每章运行 `scripts/project_check.py`；整本交付前运行 `scripts/project_check.py --complete`，并人工核对结构、人物弧和类型承诺。
 
 ## 项目文件约定
 
@@ -50,12 +52,13 @@ novel-project/
 ├── chapters/
 ├── control-cards/
 └── state/
+    ├── initial.json
     ├── state.json
     └── transactions/
 ```
 
-`state/state.json` 是结构化事实源。Markdown 设定、人物卡和总结用于阅读与创作，不应与事实源悄悄分叉；发现冲突时先根据正文与用户明确说明确定哪一边是真实状态，再同步修正。
+`state/initial.json` 和逐章事务可重放出当前状态。Markdown 设定、人物卡和总结用于阅读与创作；发现冲突时先根据正文与用户说明确定事实，再同步修正状态和受影响的事务。
 
 ## 写作交付
 
-用户只要求正文时，直接交付正文，不展示内部检查清单。用户要求项目化创作时，把章节、控制卡和状态事务写入对应文件，并说明本章实际推进了哪些剧情事实。
+用户只要求正文时，直接交付正文。用户要求项目化创作时，写入章节、控制卡和状态事务；要求整本时，交付实际章节数、字数与未解决问题的核对结果。

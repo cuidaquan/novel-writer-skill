@@ -18,13 +18,12 @@ world/<topic>.md
 
 ## 自动装配
 
-项目化续写时，可在控制卡完成后运行：
+项目化续写时，优先在章卡 `context.characters` 和 `context.world` 中列出本章资料，`viewpoint` 对应的人物卡会自动加入。章卡完成后运行：
 
 ```bash
 python3 scripts/build_context.py /path/to/novel \
-  --character lin-zhou \
-  --character chen-yu \
-  --world locations/old-warehouse \
+  --compact-state \
+  --max-chars 30000 \
   --output /tmp/chapter-context.md
 ```
 
@@ -35,9 +34,11 @@ python3 scripts/build_context.py /path/to/novel \
 3. 总纲与当前卷纲（若存在）
 4. 当前章节控制卡
 5. 最近三章正文（可用 `--recent` 调整）
-6. 显式指定的人物与世界观条目
+6. 章卡引用和命令行追加的人物与世界观条目
 
 输出文件是临时上下文，不是新的事实源。正文、配置和 `state/state.json` 仍是权威来源；原文件变化后应重新生成，不继续使用旧包。
+
+`--compact-state` 只纳入本章人物、相关关系、未结束剧情线/伏笔及最近 20 条时间线和备注；重要旧事实若被省略，应回看完整状态或资料源。`--max-chars` 只检查大小，超限会失败，不会静默截断。修改旧章时可用 `--state` 指向 `state_rebuild.py --through` 生成的历史快照。
 
 ## 选择人物与世界观
 

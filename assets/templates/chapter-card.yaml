@@ -1,7 +1,15 @@
 chapter: 1
 title: ""
+viewpoint: null
+target_words: null
 goal: ""
 conflict: ""
+
+context:
+  characters: []
+  world: []
+
+scenes: []
 
 change:
   plot: ""

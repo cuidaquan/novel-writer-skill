@@ -51,6 +51,9 @@ def main() -> int:
     state = json.loads(state_path.read_text(encoding="utf-8"))
     state["project"]["title"] = args.title
     state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (target / "state" / "initial.json").write_text(
+        json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
     novel_path = target / "novel.yaml"
     novel_text = novel_path.read_text(encoding="utf-8")
