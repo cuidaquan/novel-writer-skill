@@ -52,6 +52,7 @@ novel-project/
 - `foreshadowing.plant`、`foreshadowing.pay_off`：已有伏笔 id 列表；必须出现在同章 `foreshadowing_updates`。【脚本】
 - `revelations.touch`、`revelations.reveal`：已有真相 id 列表；`reveal` 必须在同章事务中标为读者已知，事务里的读者揭示也必须在章卡出现。【脚本】
 - `style_modules`：已知场景模块 id 列表，可覆盖本书的 `style.modules`。【脚本】
+- `style_override`：可选映射，覆盖本章的 `novel.yaml style` 局部参数（键限 `tone`、`pov_distance`、`sentence_length`、`rhythm`、`dialogue_density`、`exposition_density`、`description_density`、`sensory_detail`、`interiority`、`metaphor_density`、`humor`、`ending_mode`、`violence`），值为非空标量。【脚本 + 人工】结构与键由脚本校验；覆盖是否符合本章意图由作者判断；`style_report` 会把与声明一致的偏移标为 `style-override` 而不是漂移。
 - `required_facts`：非空字符串列表。【人工】脚本只校验类型；是否在正文兑现由作者核对。
 - `forbidden`：非空字符串列表。【脚本 + 人工】正文命中会给出 NOTE，是否违反由作者判断。
 - `payoff.expected`、`payoff.status`、`payoff.reason` 与可选 `payoff.id`：类型回报。`status` 取 `fulfilled`、`deferred` 或 `dropped`；`deferred`/ `dropped` 必须写 `reason`。`id` 用来跨章认领同一条承诺；缺省时按 `expected` 完全相同分组。【脚本 + 人工】

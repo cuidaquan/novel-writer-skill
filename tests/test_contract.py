@@ -165,6 +165,19 @@ class CardFieldContract(unittest.TestCase):
         result = run_script("project_check.py", self.project)
         self.assertIn("ending.mode 'cliffhanger'", result.stdout)
 
+    def test_style_override_shape_and_keys(self) -> None:
+        self.write_card(CARD_BASE + "style_override:\n  sentence-length: short\n")
+        result = run_script("project_check.py", self.project, ok=False)
+        self.assertIn("style_override has unknown parameter 'sentence-length'", result.stdout)
+
+        self.write_card(CARD_BASE + 'style_override:\n  sentence_length: ""\n')
+        result = run_script("project_check.py", self.project, ok=False)
+        self.assertIn("style_override.sentence_length must not be empty", result.stdout)
+
+        self.write_card(CARD_BASE + "style_override: 5\n")
+        result = run_script("project_check.py", self.project, ok=False)
+        self.assertIn("style_override must be a mapping", result.stdout)
+
     def test_card_forbidden_is_an_advisory_note(self) -> None:
         self.write_card(CARD_BASE + "forbidden:\n  - 他感到愤怒\n")
         (self.project / "chapters" / "chapter-0001.md").write_text(

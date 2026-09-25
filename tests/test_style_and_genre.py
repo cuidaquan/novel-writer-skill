@@ -46,6 +46,17 @@ DIALOGUE_LINES = [
     "黑暗里只剩下两个人的呼吸和远处的水声。",
 ]
 
+SHORT_LINES = [
+    "他看着窗外。",
+    "雨还在下。",
+    "她没有回头。",
+    "他也没有开口。",
+    "沉默停在两人之间。",
+    "他说了再见。",
+    "她轻轻点头。",
+    "门在身后合上。",
+]
+
 MASTER = """# 总纲
 ## 故事承诺
 - 主角：调查员
@@ -70,7 +81,7 @@ def run_script(script: str, *args: object, ok: bool = True) -> subprocess.Comple
     return result
 
 
-def card_text(number: int, style_modules: str = "[]", payoff: str = "") -> str:
+def card_text(number: int, style_modules: str = "[]", payoff: str = "", style_override: str = "") -> str:
     text = (
         f"chapter: {number}\n"
         f"title: 第{number}章\n"
@@ -85,7 +96,7 @@ def card_text(number: int, style_modules: str = "[]", payoff: str = "") -> str:
         "  world: []\n"
         f"style_modules: {style_modules}\n"
     )
-    return text + payoff
+    return text + style_override + payoff
 
 
 class ProjectFixture(unittest.TestCase):
@@ -246,6 +257,37 @@ class PromiseReport(ProjectFixture):
         result = run_script("build_context.py", project, "--chapter", 1, ok=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("fill payoff.reason", result.stderr)
+
+
+class StyleOverride(ProjectFixture):
+    """v1.2: a declared control-card override explains an intended style deviation."""
+
+    def build_three(self, name: str, override: str) -> Path:
+        long_a = "# 第一章\n\n" + "\n\n".join(LONG_LINES) + "\n"
+        long_b = "# 第二章\n\n" + "\n\n".join(LONG_LINES) + "\n"
+        short = "# 第三章\n\n" + "\n\n".join(SHORT_LINES) + "\n"
+        cards = {number: card_text(number) for number in (1, 2)}
+        cards[3] = card_text(3, style_override=override)
+        return self.build(name, "mystery", {1: long_a, 2: long_b, 3: short}, 2, cards=cards)
+
+    def test_declared_override_relabels_drift(self) -> None:
+        project = self.build_three("override", "style_override:\n  sentence_length: short\n")
+        report = run_script("style_report.py", project, "--chapter", 3).stdout
+        self.assertIn("## Declared override (control card)", report)
+        self.assertIn("- sentence_length: short", report)
+        self.assertIn("[style-override]", report)
+        self.assertNotIn("[style-sentence-length]", report)
+
+    def test_mismatched_override_still_reports_drift(self) -> None:
+        project = self.build_three("mismatch", "style_override:\n  sentence_length: long\n")
+        report = run_script("style_report.py", project, "--chapter", 3).stdout
+        self.assertIn("[style-sentence-length]", report)
+        self.assertIn("the card declares sentence_length='long'", report)
+
+    def test_build_context_shows_declared_override(self) -> None:
+        project = self.build_three("ctxoverride", "style_override:\n  sentence_length: short\n")
+        context = run_script("build_context.py", project, "--chapter", 3).stdout
+        self.assertIn("- Style override: sentence_length=short", context)
 
 
 class PromiseSettlement(ProjectFixture):

@@ -502,10 +502,12 @@ def style_findings(chapter: Chapter, baseline: StyleBaseline) -> list[Finding]:
     base = baseline.metrics
     path = chapter.body_path
     sample = ", ".join(map(str, baseline.chapters))
+    override = chapter.card.get("style_override") if isinstance(chapter.card.get("style_override"), dict) else {}
+    proposed = prose_metrics.style_proposals(target)
     findings: list[Finding] = []
-    for check, key, threshold in (
-        ("style-sentence-length", "avg_sentence_chars", prose_metrics.SENTENCE_DRIFT),
-        ("style-paragraph-length", "avg_paragraph_chars", prose_metrics.PARAGRAPH_DRIFT),
+    for check, key, threshold, declared_key in (
+        ("style-sentence-length", "avg_sentence_chars", prose_metrics.SENTENCE_DRIFT, "sentence_length"),
+        ("style-paragraph-length", "avg_paragraph_chars", prose_metrics.PARAGRAPH_DRIFT, None),
     ):
         base_value = base[key]
         target_value = target[key]
@@ -514,27 +516,54 @@ def style_findings(chapter: Chapter, baseline: StyleBaseline) -> list[Finding]:
         delta = (target_value - base_value) / base_value
         if abs(delta) <= threshold:
             continue
+        declared = override.get(declared_key) if declared_key else None
+        if declared_key and declared and declared == proposed.get(declared_key):
+            findings.append(
+                Finding(
+                    "NOTE", "style-override", path, 1,
+                    f"{key} is {target_value} vs baseline {base_value} ({delta:+.0%}), matching the declared override {declared!r}",
+                    f"the control card declares style_override.{declared_key}={declared}; baseline pools chapters {sample}",
+                    "no action needed unless the chapter reads differently than intended.",
+                )
+            )
+            continue
         direction = "higher" if delta > 0 else "lower"
+        basis = f"baseline pools chapters {sample}; threshold {threshold:.0%}"
+        if declared_key and declared:
+            basis += f"; the card declares {declared_key}={declared!r} but the chapter reads {proposed.get(declared_key)!r}"
         findings.append(
             Finding(
                 "NOTE", check, path, 1,
                 f"{key} is {target_value} vs baseline {base_value} ({delta:+.0%})",
-                f"baseline pools chapters {sample}; threshold {threshold:.0%}",
+                basis,
                 f"this chapter reads {direction} in this dimension; adjust only if unintended.",
             )
         )
     delta = target["dialogue_line_ratio"] - base["dialogue_line_ratio"]
     if abs(delta) > prose_metrics.DIALOGUE_DRIFT:
-        direction = "more" if delta > 0 else "less"
-        findings.append(
-            Finding(
-                "NOTE", "style-dialogue-ratio", path, 1,
-                f"dialogue line ratio is {target['dialogue_line_ratio']} vs baseline "
-                f"{base['dialogue_line_ratio']} ({delta:+.3f})",
-                f"baseline pools chapters {sample}; threshold {prose_metrics.DIALOGUE_DRIFT:.2f}",
-                f"this chapter carries {direction} dialogue than the baseline; confirm it is intended.",
+        declared = override.get("dialogue_density")
+        if declared and declared == proposed.get("dialogue_density"):
+            findings.append(
+                Finding(
+                    "NOTE", "style-override", path, 1,
+                    f"dialogue line ratio is {target['dialogue_line_ratio']} vs baseline {base['dialogue_line_ratio']} ({delta:+.3f}), matching the declared override {declared!r}",
+                    f"the control card declares style_override.dialogue_density={declared}; baseline pools chapters {sample}",
+                    "no action needed unless the chapter reads differently than intended.",
+                )
             )
-        )
+        else:
+            direction = "more" if delta > 0 else "less"
+            basis = f"baseline pools chapters {sample}; threshold {prose_metrics.DIALOGUE_DRIFT:.2f}"
+            if declared:
+                basis += f"; the card declares dialogue_density={declared!r} but the chapter reads {proposed.get('dialogue_density')!r}"
+            findings.append(
+                Finding(
+                    "NOTE", "style-dialogue-ratio", path, 1,
+                    f"dialogue line ratio is {target['dialogue_line_ratio']} vs baseline {base['dialogue_line_ratio']} ({delta:+.3f})",
+                    basis,
+                    f"this chapter carries {direction} dialogue than the baseline; confirm it is intended.",
+                )
+            )
     return findings
 
 
@@ -613,6 +642,11 @@ def render_style_report(chapter: Chapter, baseline: StyleBaseline, findings: lis
     style = chapter.novel.get("style") if isinstance(chapter.novel.get("style"), dict) else {}
     declared = [f"- {field}: {style[field]}" for field in STYLE_FIELDS if field in style]
     lines.extend(declared if declared else ["(none)"])
+    lines.append("")
+
+    override = chapter.card.get("style_override") if isinstance(chapter.card.get("style_override"), dict) else {}
+    lines.append("## Declared override (control card)")
+    lines.extend([f"- {key}: {value}" for key, value in sorted(override.items())] if override else ["(none)"])
     lines.append("")
 
     lines.append("## Metrics")

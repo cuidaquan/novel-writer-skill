@@ -30,6 +30,10 @@ revelations:
 
 style_modules: []
 
+# style_override:          # optional per-chapter override of novel.yaml style parameters
+#   sentence_length: short
+#   dialogue_density: high
+
 required_facts: []
 forbidden: []
 

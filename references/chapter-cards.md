@@ -31,6 +31,9 @@ revelations:
   touch: [r-014]
   reveal: []
 style_modules: [suspense]
+style_override:
+  sentence_length: short
+  dialogue_density: high
 payoff:
   id: partner-suspicion
   expected: 让读者第一次怀疑搭档

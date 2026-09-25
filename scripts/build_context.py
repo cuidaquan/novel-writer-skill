@@ -442,6 +442,9 @@ def main() -> int:
             f"- World entries: {', '.join(world_names) if world_names else 'none'}",
             f"- State view: {'compact' if args.compact_state else 'full'}",
         ]
+        override = card_data.get("style_override") if isinstance(card_data.get("style_override"), dict) else {}
+        if override:
+            manifest.append("- Style override: " + ", ".join(f"{key}={value}" for key, value in sorted(override.items())))
         if args.compact_state and omitted is not None:
             omitted_note = ", ".join(f"{key} {value}" for key, value in omitted.items() if value)
             manifest.append(f"- Compact view omitted: {omitted_note or 'none'}")

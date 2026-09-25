@@ -27,6 +27,21 @@ STAGE_FIELDS = ("阶段目标", "主冲突", "阶段末变化", "下一阶段压
 PLACEHOLDERS = {"待定", "未定", "TODO", "TBD", "角色名", "未命名小说"}
 PAYOFF_STATUS = {"fulfilled", "deferred", "dropped"}
 ENDING_MODES = {"hook", "reversal", "emotional-beat", "resolution"}
+STYLE_OVERRIDE_KEYS = {
+    "tone",
+    "pov_distance",
+    "sentence_length",
+    "rhythm",
+    "dialogue_density",
+    "exposition_density",
+    "description_density",
+    "sensory_detail",
+    "interiority",
+    "metaphor_density",
+    "humor",
+    "ending_mode",
+    "violence",
+}
 
 
 def filled(value: object) -> bool:
@@ -71,6 +86,19 @@ def check_card_fields(card: dict, label: str, errors: list[str]) -> None:
             hook = ending.get("hook")
             if hook is not None and not isinstance(hook, str):
                 errors.append(f"{label}: ending.hook must be a string")
+    override = card.get("style_override")
+    if override is not None:
+        if not isinstance(override, dict):
+            errors.append(f"{label}: style_override must be a mapping")
+        else:
+            for key, value in override.items():
+                if key not in STYLE_OVERRIDE_KEYS:
+                    errors.append(f"{label}: style_override has unknown parameter {key!r}")
+                if isinstance(value, str):
+                    if not value.strip():
+                        errors.append(f"{label}: style_override.{key} must not be empty")
+                elif type(value) not in (int, float, bool):
+                    errors.append(f"{label}: style_override.{key} must be a string, number or boolean")
 
 
 def check_payoff(card: dict, label: str, errors: list[str]) -> None:
