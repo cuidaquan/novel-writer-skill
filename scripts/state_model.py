@@ -11,7 +11,14 @@ from typing import Any
 
 
 PLOT_STATUS = {"open", "paused", "resolved"}
+# State records what has already happened on the page. A clue that the plan
+# promises but no chapter has planted yet stays in the control card, not here;
+# the planting chapter introduces it and the commit-time check keeps the card
+# and the transaction aligned.
 FORESHADOWING_STATUS = {"planted", "active", "resolved", "dropped"}
+CLUE_OPEN_STATUS = {"planted", "active"}
+CLUE_PLANTED_STATUS = {"planted", "active"}
+CLUE_PAYOFF_STATUS = {"resolved", "dropped"}
 MAPPING_UPDATES = {
     "characters": "character_updates",
     "relationships": "relationship_updates",
@@ -149,7 +156,7 @@ def validate_state(state: dict) -> list[str]:
                         errors.append(f"handoff.carry_over references unknown item: {item}")
                     elif isinstance(thread, dict) and thread.get("status", "open") == "resolved":
                         errors.append(f"handoff.carry_over cannot reference a resolved plot thread: {item}")
-                    elif isinstance(clue, dict) and clue.get("status", "planted") in {"resolved", "dropped"}:
+                    elif isinstance(clue, dict) and clue.get("status", "planted") in CLUE_PAYOFF_STATUS:
                         errors.append(f"handoff.carry_over cannot reference closed foreshadowing: {item}")
             handoff_notes = handoff.get("notes", [])
             if not isinstance(handoff_notes, list) or any(not nonempty(note) for note in handoff_notes):

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import prose_metrics
 from modules import genre_module_status, module_paths
-from planning import check_plan
+from planning import boundary_lines, check_plan
 from project_yaml import ProjectYAMLError, read_yaml
 from state_model import last_touched_chapters, read_json, validate_state
 from state_rebuild import transaction_paths
@@ -464,6 +464,7 @@ def main() -> int:
                 else "- Style anchor: unavailable (insufficient finalized sample)"
             )
         manifest.append("- Information boundary: revelations.truth is author-only; reader_known=false is not confirmed to readers. A viewpoint character knows a truth only when listed in known_by. A planned reveal must be earned on the page before the transaction marks it reader-known.")
+        manifest.extend(boundary_lines(novel_data))
         manifest.append("- Sources:")
         manifest.extend(f"  - {display_path(project, path)}" for path in included)
         manifest.append("")

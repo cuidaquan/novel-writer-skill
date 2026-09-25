@@ -14,7 +14,7 @@ from pathlib import Path
 from planning import numbered_path, payoff_groups
 from prose_metrics import count_words
 from project_yaml import ProjectYAMLError, read_yaml
-from state_model import integer, read_json, validate_state
+from state_model import CLUE_OPEN_STATUS, integer, read_json, validate_state
 
 
 def parse_args() -> argparse.Namespace:
@@ -113,7 +113,7 @@ def main() -> int:
     threads = state.get("plot_threads") if isinstance(state.get("plot_threads"), dict) else {}
     open_threads = sorted(key for key, value in threads.items() if isinstance(value, dict) and value.get("status", "open") in {"open", "paused"})
     clues = state.get("foreshadowing") if isinstance(state.get("foreshadowing"), dict) else {}
-    open_clues = sorted(key for key, value in clues.items() if isinstance(value, dict) and value.get("status", "planted") in {"planted", "active"})
+    open_clues = sorted(key for key, value in clues.items() if isinstance(value, dict) and value.get("status", "planted") in CLUE_OPEN_STATUS)
     secrets = state.get("revelations") if isinstance(state.get("revelations"), dict) else {}
     unrevealed = sorted(key for key, value in secrets.items() if isinstance(value, dict) and value.get("reader_known") is not True)
     deferred = [key for key, entries in payoff_groups(project, current) if entries[-1][1].get("status") == "deferred"]

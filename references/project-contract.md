@@ -27,14 +27,14 @@ novel-project/
 
 - `schema_version`：整数，必须为 `1`。
 - `title`：非空字符串，必须与 `state.project.title` 一致。
-- `language`、`audience`：字符串。
+- `language`、`audience`：字符串。`audience` 为 `adult`/`mature`/`explicit` 时，`build_context.py` 的清单要求 `content_limits` 已声明，否则标注未声明。
 - `genre.primary`：模块 id（小写字母、数字、连字符）；`genre.secondary`：模块 id 列表，最多两个。
 - `length.target_words`、`length.target_chapters`：正整数或 `null`。
 - `narration.pov`、`narration.tense`：字符串。
 - `narration.viewpoint_characters`：人物 id 列表，每个都要有 `characters/<id>.(yaml|yml)`。
 - `style`：`tone`、`pov_distance`、`sentence_length`、`rhythm`、`dialogue_density`、`exposition_density`、`description_density`、`sensory_detail`、`interiority`、`metaphor_density`、`humor`、`ending_mode` 等可观察参数。
 - `style.modules`：已知场景模块 id 列表；`style.forbidden`：字符串列表。
-- `content_limits`：字符串列表。
+- `content_limits`：字符串列表。【脚本】形状由写前检查与项目校验验证；每项是否被执行由作者与审稿判断。`audience`、`content_limits`、`style.forbidden` 会随每章上下文清单一起输出。
 
 ## 章节控制卡 control-cards/chapter-NNNN.yaml
 
@@ -49,7 +49,7 @@ novel-project/
 - `scenes`：非空字符串列表（可选）。【脚本 + 人工】结构由脚本校验；场景是否真的写成、是否有效由作者核对。
 - `change.plot`、`change.character`、`change.relationship`：至少一项非空。【脚本 + 人工】
 - `threads.advance`、`threads.touch`：已有剧情线 id 列表；`advance` 必须出现在同章事务的 `plot_thread_updates`。【脚本】
-- `foreshadowing.plant`、`foreshadowing.pay_off`：已有伏笔 id 列表；必须出现在同章 `foreshadowing_updates`。【脚本】
+- `foreshadowing.plant`、`foreshadowing.pay_off`：已有伏笔 id 列表。【脚本】`plant` 要求同章 `foreshadowing_updates` 把该条写成 `planted` 或 `active`；`pay_off` 要求写成 `resolved` 或 `dropped`，并把 `resolved_chapter` 写成当前章。只留一条说明而没有状态变化不算兑现。
 - `revelations.touch`、`revelations.reveal`：已有真相 id 列表；`reveal` 必须在同章事务中标为读者已知，事务里的读者揭示也必须在章卡出现。【脚本】
 - `style_modules`：已知场景模块 id 列表，可覆盖本书的 `style.modules`。【脚本】
 - `style_override`：可选映射，覆盖本章的 `novel.yaml style` 局部参数（键限 `tone`、`pov_distance`、`sentence_length`、`rhythm`、`dialogue_density`、`exposition_density`、`description_density`、`sensory_detail`、`interiority`、`metaphor_density`、`humor`、`ending_mode`、`violence`），值为非空标量。【脚本 + 人工】结构与键由脚本校验；覆盖是否符合本章意图由作者判断；`style_report` 会把与声明一致的偏移标为 `style-override` 而不是漂移。
@@ -96,10 +96,10 @@ novel-project/
 
 ## 校验层级
 
-1. 写前：`project_check.py --preflight book|serial`；`build_context.py` 也会检查目标章。
+1. 写前：`project_check.py --preflight book|serial`；`build_context.py` 也会检查目标章。`--preflight` 会在同一次运行里同时报告结构错误与规划缺项（错误去重），不要求先修完结构再看规划。
 2. 写后：`review_chapter.py`（可加 `--style`）。
 3. 提交：`state_commit.py`。
-4. 项目：`project_check.py`；完结 `--complete`。
+4. 项目：`project_check.py`；完结 `--complete`。章零快照非法时，事务回放降为 WARN，逐章事务检查仍按日志执行；此时不再建议重写派生快照。
 5. 连续性：`state_rebuild.py`、`handoff_report.py`。
 6. 风格与类型：`style_report.py`、`style_profile.py`、`promise_report.py`。
 

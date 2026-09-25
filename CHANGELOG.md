@@ -2,6 +2,17 @@
 
 版本对应 .doc/roadmap-v0.6-v1.0.md 的路线。公开字段契约见 [references/project-contract.md](references/project-contract.md)。
 
+## 1.4.2
+- 章卡伏笔与事务对齐升级：`foreshadowing.plant` 要求同章事务把该条改成 `planted` 或 `active`，`pay_off` 要求改成 `resolved` 或 `dropped` 并把 `resolved_chapter` 写成当前章。此前只要求"事务里出现过一条更新记录"，正文埋了但状态没记会静默通过，直到完结门禁才暴露。
+- 章零快照非法时不再清空事务列表：`project_check.py` 把回放失败降为 WARN，逐章事务检查照常运行，也不再对受牵连的章节数不一致建议"运行 state_rebuild.py --write"，避免把人引向重写快照。来源是给 10 章项目补写初始状态时观察到的连环误报。
+- 规划字段标签容忍装饰：`**主角**：`、反引号包裹和省略列表符号的标签都算已填写；此前误报"fill 主角"，并连带使 `build_context.py` 拒绝生成上下文。
+- 草稿字数提示提前：未提交章节低于目标 80% 时也给 WARN，并标注 `(draft, not committed)`；此前只有提交后才提示，扩写窗口已经过去。
+- 内容边界进入校验与上下文：`audience`、`content_limits`、`style.forbidden` 的形状纳入写前检查与项目校验；`build_context.py` 清单固定输出 `Audience`、`Content limits`、`Style forbidden`，成年向项目缺少 `content_limits` 时在清单里直接标注未声明。
+- `--preflight` 一次报全：结构错误与规划缺项在同一次运行里合并输出并去重，不再需要一层一层修。
+- 完结项目的写前检查提示更明确：计划章节全部提交后运行 `--preflight` 时提示改用 `--complete`，不再只报“下一章超出 target_chapters”。
+- 审查报告绑定修订：`review_chapter.py` 与 `style_report.py` 的报告头输出正文指纹（`sha256` 前 12 位）。NOTE 级提示与文风漂移只算一次，正文改动后旧报告会静默过期；现在重跑一次即可看出报告对应的是哪一版正文。
+- 直引号纳入审查：`review.py` 的结尾标点与闭合配对同时接受直引号 `"`。用直引号写作的中文稿此前会把"以对白收尾"误报为 `ending-punctuation`，同时完全漏掉未闭合引号；文风报告里对话比例的定义文字也与实现对齐。
+
 ## 1.4.1
 - 修正开场/结尾签名：说话标签（`我说，``她问我，``老板说：`）不再算作段落开头或结尾，否则中文对话密集的稿子会把 `我说，``她说，``我说，嗯。` 报成重复开头/重复结尾，而真正在变化的内容从未被比较。
 - 修正对话行占比：除引号外，以说话标签开头的行也计为对话。此前不使用引号的对话体会被算成 0 对话，并据此建议错误的 `dialogue_density`。

@@ -9,10 +9,25 @@ from pathlib import Path
 
 import review
 from modules import module_paths
-from planning import ENDING_MODES, check_card_fields, check_payoff, check_plan, payoff_groups
+from planning import (
+    ENDING_MODES,
+    boundary_errors,
+    check_card_fields,
+    check_payoff,
+    check_plan,
+    payoff_groups,
+)
 from prose_metrics import count_words
 from project_yaml import ProjectYAMLError, read_yaml
-from state_model import integer, nonempty, read_json, validate_state
+from state_model import (
+    CLUE_OPEN_STATUS,
+    CLUE_PAYOFF_STATUS,
+    CLUE_PLANTED_STATUS,
+    integer,
+    nonempty,
+    read_json,
+    validate_state,
+)
 from state_rebuild import rebuild, transaction_paths
 
 
@@ -64,6 +79,7 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
         errors.append("novel.yaml schema_version must be 1")
     errors.extend(validate_state(state))
     errors.extend(f"initial: {error}" for error in validate_state(initial))
+    errors.extend(boundary_errors(novel))
     if mapping(initial.get("project")).get("current_chapter") != 0:
         errors.append("state/initial.json must be a chapter-zero snapshot")
     if novel.get("title") != mapping(state.get("project")).get("title"):
@@ -73,21 +89,36 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
     stats["chapters"] = len(chapters)
     try:
         journals = transaction_paths(project)
-        rebuilt = rebuild(project)
-        if rebuilt != state:
-            errors.append("state/state.json differs from replayed transactions; run state_rebuild.py after reviewing edits")
     except (OSError, ValueError) as exc:
         errors.append(f"transaction history: {exc}")
         journals = []
+    replay_error = ""
+    if journals:
+        try:
+            rebuilt = rebuild(project)
+            if rebuilt != state:
+                errors.append("state/state.json differs from replayed transactions; run state_rebuild.py after reviewing edits")
+        except (OSError, ValueError) as exc:
+            # The journal files themselves were readable, so per-chapter
+            # transaction checks below still run; only the derived snapshot
+            # comparison is unavailable.
+            replay_error = str(exc)
+            warnings.append(f"transaction replay skipped: {exc}")
     current = mapping(state.get("project")).get("current_chapter")
     if not integer(current):
         current = 0
     stats["committed"] = current
     if current != len(journals):
-        errors.append(
-            f"state.current_chapter={current} but transaction count={len(journals)}; "
-            "run state_rebuild.py --write to resynchronize the derived snapshot from the journal"
-        )
+        if replay_error:
+            errors.append(
+                f"state.current_chapter={current} but transaction count={len(journals)}; "
+                "the snapshot cannot be resynchronized until the replay errors above are fixed"
+            )
+        else:
+            errors.append(
+                f"state.current_chapter={current} but transaction count={len(journals)}; "
+                "run state_rebuild.py --write to resynchronize the derived snapshot from the journal"
+            )
     if current and set(range(1, current + 1)) - chapters.keys():
         errors.append("one or more committed chapters have no body file")
     if current and set(range(1, current + 1)) - cards.keys():
@@ -183,8 +214,11 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
         if target is not None:
             if not integer(target, 1):
                 errors.append(f"{card_path.name}: target_words must be positive")
-            elif number <= current and words < target * 0.8:
-                warnings.append(f"chapter {number} has {words} words, below 80% of its {target} word target")
+            elif words < target * 0.8:
+                # Reported for drafts too: length feedback is only useful while
+                # the chapter can still be extended.
+                stage = "" if number <= current else " (draft, not committed)"
+                warnings.append(f"chapter {number} has {words} words, below 80% of its {target} word target{stage}")
         elif complete:
             errors.append(f"{card_path.name}: completed book needs target_words for every chapter")
         if card.get("context") is not None and not isinstance(card["context"], dict):
@@ -216,8 +250,18 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
                 for item in id_list(foreshadowing.get(name, []), f"{card_path.name} foreshadowing.{name}", errors):
                     if item not in available_foreshadowing:
                         errors.append(f"{card_path.name}: unknown foreshadowing {item}")
-                    elif item not in transaction_foreshadowing:
-                        errors.append(f"{card_path.name}: promised foreshadowing {name} {item} is missing from the chapter transaction")
+                        continue
+                    update = transaction_foreshadowing.get(item)
+                    status = update.get("status") if isinstance(update, dict) else None
+                    if name == "plant" and status not in CLUE_PLANTED_STATUS | CLUE_PAYOFF_STATUS:
+                        errors.append(
+                            f"{card_path.name}: planned plant {item} needs a planted status in the chapter transaction"
+                        )
+                    if name == "pay_off" and (status not in CLUE_PAYOFF_STATUS or update.get("resolved_chapter") != number):
+                        errors.append(
+                            f"{card_path.name}: planned payoff {item} needs a resolved status and resolved_chapter {number} "
+                            "in the chapter transaction"
+                        )
             if card.get("revelations") is not None and not isinstance(card["revelations"], dict):
                 errors.append(f"{card_path.name}: revelations must be a mapping")
             transaction_revelations = mapping(tx.get("revelation_updates"))
@@ -258,7 +302,7 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
             if isinstance(thread, dict) and thread.get("status", "open") != "resolved":
                 errors.append(f"unresolved plot thread: {name}")
         for name, item in mapping(state.get("foreshadowing")).items():
-            if isinstance(item, dict) and item.get("status", "planted") in {"planted", "active"}:
+            if isinstance(item, dict) and item.get("status", "planted") in CLUE_OPEN_STATUS:
                 errors.append(f"unresolved foreshadowing: {name}")
         for _, entries in payoff_groups(project, current):
             chapter, payoff = entries[-1]
@@ -281,8 +325,12 @@ def main() -> int:
     args = parser.parse_args()
     project = args.project.expanduser().resolve()
     errors, warnings, stats = check(project, args.complete)
-    if args.preflight and not errors:
+    if args.preflight:
+        # Report plan gaps in the same pass as structural errors so a broken
+        # project does not have to be fixed one layer per run.
         errors.extend(check_plan(project, args.preflight))
+        errors = list(dict.fromkeys(errors))
+        warnings = list(dict.fromkeys(warnings))
     for warning in warnings:
         print(f"WARN: {warning}")
     for error in errors:

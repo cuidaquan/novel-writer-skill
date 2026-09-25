@@ -44,8 +44,26 @@ STYLE_OVERRIDE_KEYS = {
 }
 
 
+BULLET = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s*")
+EMPHASIS = "*_`~ \t"
+
+
+def tidy(text: str) -> str:
+    """Drop list and markdown emphasis decoration so labels compare literally."""
+    return text.strip().strip(EMPHASIS).strip()
+
+
 def filled(value: object) -> bool:
-    return nonempty(value) and value.strip() not in PLACEHOLDERS
+    return nonempty(value) and tidy(value) not in PLACEHOLDERS
+
+
+def plan_entry(line: str) -> tuple[str, str] | None:
+    """Split a `label：value` plan line, tolerating bullets and **emphasis**."""
+    text = BULLET.sub("", line, count=1)
+    for index, char in enumerate(text):
+        if char in "：:":
+            return tidy(text[:index]), tidy(text[index + 1 :])
+    return None
 
 
 def missing_fields(path: Path, labels: tuple[str, ...], errors: list[str]) -> None:
@@ -54,10 +72,60 @@ def missing_fields(path: Path, labels: tuple[str, ...], errors: list[str]) -> No
     except OSError as exc:
         errors.append(f"cannot read plan {path}: {exc}")
         return
+    found: dict[str, str] = {}
+    for line in lines:
+        entry = plan_entry(line)
+        if entry is not None and entry[0] and entry[0] not in found:
+            found[entry[0]] = entry[1]
     for label in labels:
-        pattern = re.compile(rf"^\s*(?:[-*]|\d+[.)])\s*{re.escape(label)}[：:]\s*(.*?)\s*$")
-        if not any((match := pattern.match(line)) and filled(match.group(1)) for line in lines):
+        if not filled(found.get(label)):
             errors.append(f"{path.name}: fill {label}")
+
+
+ADULT_AUDIENCES = {"adult", "mature", "explicit"}
+
+
+def declared_string_list(value: object) -> bool:
+    return isinstance(value, list) and all(isinstance(item, str) and item.strip() for item in value)
+
+
+def boundary_errors(novel: dict) -> list[str]:
+    """Validate the fields that bound what the book may contain.
+
+    A malformed `content_limits` or `style.forbidden` would silently drop the
+    only written record of the project's content boundary.
+    """
+    errors: list[str] = []
+    audience = novel.get("audience")
+    if audience is not None and not (isinstance(audience, str) and audience.strip()):
+        errors.append("novel.yaml audience must be a non-empty string")
+    if "content_limits" in novel and not declared_string_list(novel.get("content_limits")):
+        errors.append("novel.yaml content_limits must be a list of non-empty strings")
+    style = novel.get("style")
+    if isinstance(style, dict) and "forbidden" in style and not declared_string_list(style.get("forbidden")):
+        errors.append("novel.yaml style.forbidden must be a list of non-empty strings")
+    return errors
+
+
+def boundary_lines(novel: dict) -> list[str]:
+    """Render the declared content boundary for a chapter context bundle."""
+    audience = novel.get("audience")
+    audience = audience.strip() if isinstance(audience, str) and audience.strip() else "unspecified"
+    limits = novel.get("content_limits")
+    limits = [item.strip() for item in limits if isinstance(item, str) and item.strip()] if isinstance(limits, list) else []
+    if limits:
+        limit_note = "; ".join(limits)
+    elif audience.lower() in ADULT_AUDIENCES:
+        limit_note = "NONE DECLARED for an adult-audience project; declare content_limits in novel.yaml before drafting"
+    else:
+        limit_note = "none declared"
+    lines = [f"- Audience: {audience}", f"- Content limits: {limit_note}"]
+    style = novel.get("style")
+    forbidden = style.get("forbidden") if isinstance(style, dict) else None
+    forbidden = [item.strip() for item in forbidden if isinstance(item, str) and item.strip()] if isinstance(forbidden, list) else []
+    if forbidden:
+        lines.append("- Style forbidden: " + "; ".join(forbidden))
+    return lines
 
 
 def check_card_fields(card: dict, label: str, errors: list[str]) -> None:
@@ -236,6 +304,7 @@ def check_plan(project: Path, mode: str, chapter: int | None = None, state_path:
         return ["novel.yaml must be a mapping"]
     if novel.get("schema_version") != 1:
         errors.append("novel.yaml schema_version must be 1")
+    errors.extend(boundary_errors(novel))
     errors.extend(validate_state(state))
     if errors:
         return errors
@@ -275,7 +344,13 @@ def check_plan(project: Path, mode: str, chapter: int | None = None, state_path:
     length = novel.get("length") if isinstance(novel.get("length"), dict) else {}
     planned_count = length.get("target_chapters")
     if integer(planned_count, 1) and next_chapter > planned_count:
-        errors.append(f"next chapter {next_chapter} exceeds target_chapters={planned_count}")
+        if current == planned_count:
+            errors.append(
+                f"all {planned_count} planned chapters are committed, so there is no next chapter to preflight; "
+                "run project_check.py --complete for the finished book"
+            )
+        else:
+            errors.append(f"next chapter {next_chapter} exceeds target_chapters={planned_count}")
 
     if mode == "book":
         target_words = length.get("target_words")

@@ -13,6 +13,7 @@ decides whether a chapter may be committed.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,6 +46,9 @@ DELIMITER_PAIRS = (
     ("《", "》"),
     ("(", ")"),
     ("[", "]"),
+    # Manuscripts written with straight quotes are common; an odd count is a
+    # reproducible defect just like an unclosed full-width quote.
+    ('"', '"'),
 )
 
 DANGLING_PUNCTUATION = "，,、：:；;"
@@ -52,7 +56,7 @@ DANGLING_WORDS = (
     "但是", "可是", "然而", "不过", "因为", "所以", "然后", "而且",
     "并且", "于是", "接着", "以及", "如果", "虽然", "尽管", "无论",
 )
-TERMINAL_CHARS = "。！？!?…”’」』）)】]"
+TERMINAL_CHARS = "。！？!?…”’\"'」』）)】]〉》"
 MARKDOWN_PREFIXES = ("#", "-", "*", ">")
 
 STYLE_FIELDS = (
@@ -660,6 +664,16 @@ def format_finding(project: Path, finding: Finding) -> str:
     )
 
 
+def body_digest(text: str) -> str:
+    """Short fingerprint of the reviewed text.
+
+    Advisory findings and style drift are computed once; after the body changes
+    the report silently describes an older revision. Printing the digest lets a
+    later run show that the report is stale instead of being quoted as current.
+    """
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
 def render_report(chapter: Chapter, findings: list[Finding]) -> str:
     def key(finding: Finding) -> tuple:
         return (finding.level != "BLOCK", display_path(chapter.project, finding.path), finding.line, finding.check)
@@ -670,6 +684,10 @@ def render_report(chapter: Chapter, findings: list[Finding]) -> str:
     lines.append(f"- Body: {display_path(chapter.project, chapter.body_path)}")
     lines.append(f"- Control card: {display_path(chapter.project, chapter.card_path)}" if chapter.card_path else "- Control card: (missing)")
     lines.append(f"- Words: {prose_metrics.count_words(chapter.body_text)}")
+    lines.append(
+        f"- Body digest: sha256:{body_digest(chapter.body_text)} "
+        "(re-run and compare after editing; a different digest means this report is stale)"
+    )
     lines.append("")
     lines.append(f"## Blocking ({len(blocks)})")
     if blocks:
@@ -711,7 +729,7 @@ def render_style_report(chapter: Chapter, baseline: StyleBaseline, findings: lis
     lines.append("## Definitions")
     lines.append("- sentence: split on 。！？!?… and line breaks; length excludes whitespace")
     lines.append("- paragraph: each non-empty line; length excludes whitespace")
-    lines.append("- dialogue ratio: non-empty lines containing full-width quotes divided by all non-empty lines")
+    lines.append("- dialogue ratio: non-empty lines carrying full-width or straight quotes, or opening with a speech tag, divided by all non-empty lines")
     lines.append(
         f"- drift thresholds: sentence +/-{prose_metrics.SENTENCE_DRIFT:.0%}, "
         f"paragraph +/-{prose_metrics.PARAGRAPH_DRIFT:.0%}, "

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -101,6 +102,13 @@ foreshadowing:
     def commit(self, number: int) -> None:
         run_script("state_commit.py", self.project / "state" / "state.json", self.save_transaction(number))
 
+    def test_preflight_on_a_finished_book_points_at_the_complete_gate(self) -> None:
+        self.commit(1)
+        self.commit(2)
+        result = run_script("project_check.py", self.project, "--preflight", "book", ok=False)
+        self.assertIn("there is no next chapter to preflight", result.stdout)
+        self.assertIn("--complete", result.stdout)
+
     def test_complete_book_and_rebuild_after_revision(self) -> None:
         context = run_script("build_context.py", self.project, "--compact-state").stdout
         self.assertIn("characters/hero.yaml", context)
@@ -151,6 +159,88 @@ foreshadowing:
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("below 90%", result.stdout)
         self.assertIn("unresolved plot thread", result.stdout)
+
+    def test_draft_length_warns_before_commit(self) -> None:
+        """Length feedback must arrive while the chapter can still be extended."""
+        (self.project / "chapters" / "chapter-0001.md").write_text("# 第1章\n短稿。\n", encoding="utf-8")
+        result = run_script("project_check.py", self.project)
+        self.assertIn("below 80% of its 50 word target (draft, not committed)", result.stdout)
+
+    def test_plant_transaction_must_record_a_planted_status(self) -> None:
+        tx = self.transaction(1)
+        tx["foreshadowing_updates"] = {"clue": {"note": "正文里埋了，但状态没改"}}
+        run_script("state_commit.py", self.project / "state" / "state.json", self.save_transaction(1, tx))
+        result = run_script("project_check.py", self.project, ok=False)
+        self.assertIn("planned plant clue needs a planted status in the chapter transaction", result.stdout)
+
+    def test_payoff_transaction_must_record_resolution(self) -> None:
+        self.commit(1)
+        card = self.project / "control-cards" / "chapter-0002.yaml"
+        card.write_text(card.read_text(encoding="utf-8").replace("  pay_off: []", "  pay_off: [clue]"), encoding="utf-8")
+        second = self.transaction(2)
+        second["foreshadowing_updates"] = {"clue": {"status": "active"}}
+        run_script("state_commit.py", self.project / "state" / "state.json", self.save_transaction(2, second))
+        result = run_script("project_check.py", self.project, ok=False)
+        self.assertIn("planned payoff clue needs a resolved status and resolved_chapter 2", result.stdout)
+
+    def test_failed_replay_does_not_suggest_rewriting_the_snapshot(self) -> None:
+        """An invalid chapter-zero snapshot must not cascade into wrong advice."""
+        self.commit(1)
+        initial_path = self.project / "state" / "initial.json"
+        initial = json.loads(initial_path.read_text(encoding="utf-8"))
+        initial["foreshadowing"] = {"clue": {"status": "planned"}}
+        initial_path.write_text(json.dumps(initial, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        result = run_script("project_check.py", self.project, ok=False)
+        self.assertIn("initial: foreshadowing.clue.status is invalid", result.stdout)
+        self.assertIn("transaction replay skipped", result.stdout)
+        self.assertNotIn("run state_rebuild.py --write to resynchronize", result.stdout)
+        # Per-chapter transaction checks still ran against the readable journal.
+        self.assertNotIn("planned plant clue needs a planted status", result.stdout)
+
+        # A genuine count mismatch is still reported, without the rewrite advice.
+        state_path = self.project / "state" / "state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        state["project"]["current_chapter"] = 2
+        state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        result = run_script("project_check.py", self.project, ok=False)
+        self.assertIn("cannot be resynchronized until the replay errors above are fixed", result.stdout)
+
+    def test_plan_labels_accept_markdown_emphasis(self) -> None:
+        master = self.project / "outline" / "master.md"
+        text = master.read_text(encoding="utf-8")
+        for label in ("主角", "核心欲望", "最大阻力", "失败代价", "核心读者回报", "结局状态"):
+            text = re.sub(rf"^- {label}(?=[：:])", f"- **{label}**", text, count=1, flags=re.MULTILINE)
+        text = text.replace("- 主角从什么状态变到什么状态：", "- `主角从什么状态变到什么状态` : ")
+        master.write_text(text, encoding="utf-8")
+        run_script("project_check.py", self.project, "--preflight", "book")
+        run_script("build_context.py", self.project)
+
+    def test_preflight_reports_plan_and_structure_in_one_pass(self) -> None:
+        master = self.project / "outline" / "master.md"
+        master.write_text(master.read_text(encoding="utf-8").replace("- 失败代价：朋友会永远失踪\n", ""), encoding="utf-8")
+        (self.project / "chapters" / "chapter-one.md").write_text("# 一\n", encoding="utf-8")
+        result = run_script("project_check.py", self.project, "--preflight", "book", ok=False)
+        self.assertIn("fill 失败代价", result.stdout)
+        self.assertIn("unrecognized chapter filename: chapter-one.md", result.stdout)
+
+    def test_content_boundary_reaches_preflight_and_context(self) -> None:
+        novel_path = self.project / "novel.yaml"
+        original = novel_path.read_text(encoding="utf-8")
+        adult = original.replace("audience: general", "audience: adult").replace("  forbidden: []", "  forbidden: [排比式抒情]")
+        novel_path.write_text(adult, encoding="utf-8")
+        context = run_script("build_context.py", self.project, "--compact-state").stdout
+        self.assertIn("- Audience: adult", context)
+        self.assertIn("NONE DECLARED for an adult-audience project", context)
+        self.assertIn("- Style forbidden: 排比式抒情", context)
+
+        with_limits = adult.replace("content_limits: []", 'content_limits: ["所有主要人物均为成年人", "亲密场景不写露骨细节"]')
+        novel_path.write_text(with_limits, encoding="utf-8")
+        context = run_script("build_context.py", self.project, "--compact-state").stdout
+        self.assertIn("- Content limits: 所有主要人物均为成年人; 亲密场景不写露骨细节", context)
+
+        novel_path.write_text(adult.replace("content_limits: []", 'content_limits: "所有主要人物均为成年人"'), encoding="utf-8")
+        result = run_script("project_check.py", self.project, "--preflight", "book", ok=False)
+        self.assertIn("novel.yaml content_limits must be a list of non-empty strings", result.stdout)
 
     def test_revelation_boundary_and_selected_modules(self) -> None:
         novel_path = self.project / "novel.yaml"

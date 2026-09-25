@@ -118,6 +118,21 @@ class ChapterReview(ReviewTestCase):
         self.assertIn("PASS: no blocking findings", result.stdout)
         self.assertNotIn("BLOCK ", result.stdout)
 
+    def test_report_carries_a_digest_of_the_reviewed_revision(self) -> None:
+        """A stale report must be detectable: advisory findings are not re-run."""
+        import re as regex
+
+        first = run_script("review_chapter.py", self.project, "--chapter", 1, ok=False).stdout
+        digest = regex.search(r"- Body digest: sha256:([0-9a-f]{12})", first)
+        self.assertIsNotNone(digest)
+
+        again = run_script("review_chapter.py", self.project, "--chapter", 1, ok=False).stdout
+        self.assertIn(f"sha256:{digest.group(1)}", again)
+
+        self.write_body(1, CLEAN_BODY + "\n他把窗关上了。\n")
+        changed = run_script("review_chapter.py", self.project, "--chapter", 1, ok=False).stdout
+        self.assertNotIn(f"sha256:{digest.group(1)}", changed)
+
     def test_empty_body_is_a_blocking_finding(self) -> None:
         self.write_body(1, "\n\n")
         result = run_script("review_chapter.py", self.project, "--chapter", 1, ok=False)
@@ -145,6 +160,19 @@ class ChapterReview(ReviewTestCase):
         result = run_script("review_chapter.py", self.project, "--chapter", 1, ok=False)
         self.assertEqual(result.returncode, 1)
         self.assertIn("[unclosed-delimiter]", result.stdout)
+
+    def test_straight_quotes_are_reviewed_like_full_width_quotes(self) -> None:
+        """A manuscript written with ASCII quotes must not collect false notes."""
+        self.write_body(1, '# 第一章\n\n雨停了。\n\n"你迟到了。"她说。\n')
+        result = run_script("review_chapter.py", self.project, "--chapter", 1, ok=False)
+        self.assertEqual(result.returncode, 0)
+        self.assertNotIn("[ending-punctuation]", result.stdout)
+        self.assertNotIn("[unclosed-delimiter]", result.stdout)
+
+        self.write_body(1, '# 第一章\n\n雨停了。\n\n"你迟到了。\n')
+        broken = run_script("review_chapter.py", self.project, "--chapter", 1, ok=False)
+        self.assertEqual(broken.returncode, 1)
+        self.assertIn("[unclosed-delimiter]", broken.stdout)
 
     def test_unfilled_control_card_is_blocking(self) -> None:
         self.write_card(1, goal="")
