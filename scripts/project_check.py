@@ -9,12 +9,10 @@ from pathlib import Path
 
 from modules import module_paths
 from planning import check_plan
+from prose_metrics import count_words
 from project_yaml import ProjectYAMLError, read_yaml
 from state_model import integer, nonempty, read_json, validate_state
 from state_rebuild import rebuild, transaction_paths
-
-
-WORD_PATTERN = re.compile(r"[\u4e00-\u9fff]|[A-Za-z]+(?:['-][A-Za-z]+)*|\d+")
 
 
 def numbered_files(directory: Path, extensions: set[str], label: str, errors: list[str]) -> dict[int, Path]:
@@ -124,7 +122,7 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
             except ValueError as exc:
                 errors.append(str(exc))
         body = path.read_text(encoding="utf-8")
-        words = len(WORD_PATTERN.findall(body))
+        words = count_words(body)
         stats["words"] += words
         if not body.strip():
             errors.append(f"chapter {number} body is empty")

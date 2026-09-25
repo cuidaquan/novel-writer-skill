@@ -11,6 +11,8 @@
 - 分开记录作者已确定的真相、角色知情范围和读者已知边界；章节事务校验揭示时间。
 - 在章节上下文中按需加载悬疑、言情与场景文风模块。
 - 用项目校验检查章节数量、字数、事务重放及完结时的未解决剧情线。
+- 写正文后用只读的单章审查报告定位空正文、残留占位、明显截断和章卡缺项，按 BLOCK/NOTE 分级并给出文件/行号、命中依据和修订方向。
+- 用近期定稿章节做基线，提示句长、段落长度、对话比例和重复开头/结尾的偏移；样本不足时明确标记无基线，偏移只作提示。
 - 写正文前可分别检查整本规划或连载当前阶段；未就绪的章卡不能生成下一章上下文。
 - 支持悬疑、惊悚、言情、奇幻、仙侠、科幻、历史、都市等题材，也允许组合。
 - 改稿时按结构、人物、对话、描写、语言和连续性的顺序检查。
@@ -43,6 +45,13 @@ python3 scripts/project_check.py /path/to/my-novel --preflight serial
 python3 scripts/build_context.py /path/to/my-novel \
   --compact-state \
   --output /tmp/chapter-context.md
+```
+
+正文完成后先做只读审查，再按修订结果提交事务：
+
+```bash
+python3 scripts/review_chapter.py /path/to/my-novel --chapter 1
+python3 scripts/style_report.py /path/to/my-novel --chapter 1
 ```
 
 每章完成后可提交状态事务：
