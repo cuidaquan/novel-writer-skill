@@ -38,21 +38,24 @@ novel-project/
 
 ## 章节控制卡 control-cards/chapter-NNNN.yaml
 
-- `chapter`：整数，必须等于文件名编号。
-- `title`：字符串。
-- `viewpoint`：人物 id，必须属于 `narration.viewpoint_characters`。
-- `target_words`：正整数。
-- `goal`、`conflict`：非空字符串。
-- `context.characters`：人物 id 列表；`context.world`：`world/` 下的相对路径列表。
-- `scenes`：列表（可选）。
-- `change.plot`、`change.character`、`change.relationship`：至少一项非空。
-- `threads.advance`、`threads.touch`：已有剧情线 id 列表。
-- `foreshadowing.plant`、`foreshadowing.pay_off`：已有伏笔 id 列表。
-- `revelations.touch`、`revelations.reveal`：已有真相 id 列表；`reveal` 必须在同章事务中标为读者已知，事务里的读者揭示也必须在章卡出现。
-- `style_modules`：已知场景模块 id 列表，可覆盖本书的 `style.modules`。
-- `required_facts`、`forbidden`：字符串列表。
-- `payoff.expected`、`payoff.status`、`payoff.reason` 与可选 `payoff.id`：类型回报。`status` 取 `fulfilled`、`deferred` 或 `dropped`；`deferred`/ `dropped` 必须写 `reason`。`id` 用来跨章认领同一条承诺；缺省时按 `expected` 完全相同分组。
-- `ending.mode`、`ending.hook`：字符串。
+字段按校验方式分三类：**【脚本】**结构、类型、枚举与 id 存在性由写前检查与 `project_check.py` 校验；**【人工】**语义是否兑现由作者核对，脚本不判断；**【上下文】**只随上下文提供。
+
+- `chapter`：整数，必须等于文件名编号。【脚本】
+- `title`：字符串（允许空串）。【脚本】
+- `viewpoint`：人物 id，必须属于 `narration.viewpoint_characters`。【脚本】
+- `target_words`：正整数。【脚本】
+- `goal`、`conflict`：非空字符串。【脚本 + 人工】填写由脚本校验，是否成立由作者判断。
+- `context.characters`：人物 id 列表；`context.world`：`world/` 下的相对路径列表。【脚本】
+- `scenes`：非空字符串列表（可选）。【脚本 + 人工】结构由脚本校验；场景是否真的写成、是否有效由作者核对。
+- `change.plot`、`change.character`、`change.relationship`：至少一项非空。【脚本 + 人工】
+- `threads.advance`、`threads.touch`：已有剧情线 id 列表；`advance` 必须出现在同章事务的 `plot_thread_updates`。【脚本】
+- `foreshadowing.plant`、`foreshadowing.pay_off`：已有伏笔 id 列表；必须出现在同章 `foreshadowing_updates`。【脚本】
+- `revelations.touch`、`revelations.reveal`：已有真相 id 列表；`reveal` 必须在同章事务中标为读者已知，事务里的读者揭示也必须在章卡出现。【脚本】
+- `style_modules`：已知场景模块 id 列表，可覆盖本书的 `style.modules`。【脚本】
+- `required_facts`：非空字符串列表。【人工】脚本只校验类型；是否在正文兑现由作者核对。
+- `forbidden`：非空字符串列表。【脚本 + 人工】正文命中会给出 NOTE，是否违反由作者判断。
+- `payoff.expected`、`payoff.status`、`payoff.reason` 与可选 `payoff.id`：类型回报。`status` 取 `fulfilled`、`deferred` 或 `dropped`；`deferred`/ `dropped` 必须写 `reason`。`id` 用来跨章认领同一条承诺；缺省时按 `expected` 完全相同分组。【脚本 + 人工】
+- `ending.mode`、`ending.hook`：字符串（`hook` 允许空串）；未知 `mode` 只给提示。【脚本 + 人工】结构由脚本校验，结尾效果由作者判断。
 
 ## 状态 state/initial.json 与 state/state.json
 

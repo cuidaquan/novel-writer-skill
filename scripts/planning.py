@@ -26,6 +26,7 @@ BOOK_FIELDS = (
 STAGE_FIELDS = ("阶段目标", "主冲突", "阶段末变化", "下一阶段压力")
 PLACEHOLDERS = {"待定", "未定", "TODO", "TBD", "角色名", "未命名小说"}
 PAYOFF_STATUS = {"fulfilled", "deferred", "dropped"}
+ENDING_MODES = {"hook", "reversal", "emotional-beat", "resolution"}
 
 
 def filled(value: object) -> bool:
@@ -42,6 +43,34 @@ def missing_fields(path: Path, labels: tuple[str, ...], errors: list[str]) -> No
         pattern = re.compile(rf"^\s*(?:[-*]|\d+[.)])\s*{re.escape(label)}[：:]\s*(.*?)\s*$")
         if not any((match := pattern.match(line)) and filled(match.group(1)) for line in lines):
             errors.append(f"{path.name}: fill {label}")
+
+
+def check_card_fields(card: dict, label: str, errors: list[str]) -> None:
+    """Validate the card fields whose shape is objectively checkable.
+
+    Semantic fulfilment (whether a scene or required fact really landed in the
+    prose) stays an author judgement and is deliberately not checked here.
+    """
+    title = card.get("title")
+    if title is not None and not isinstance(title, str):
+        errors.append(f"{label}: title must be a string")
+    for field in ("scenes", "required_facts", "forbidden"):
+        value = card.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, list) or any(not nonempty(item) for item in value):
+            errors.append(f"{label}: {field} must be a list of non-empty strings")
+    ending = card.get("ending")
+    if ending is not None:
+        if not isinstance(ending, dict):
+            errors.append(f"{label}: ending must be a mapping")
+        else:
+            mode = ending.get("mode")
+            if mode is not None and not nonempty(mode):
+                errors.append(f"{label}: ending.mode must be a non-empty string")
+            hook = ending.get("hook")
+            if hook is not None and not isinstance(hook, str):
+                errors.append(f"{label}: ending.hook must be a string")
 
 
 def check_payoff(card: dict, label: str, errors: list[str]) -> None:
@@ -152,6 +181,7 @@ def check_card(project: Path, novel: dict, number: int, allowed_povs: set[str], 
         module_paths(novel, card)
     except ValueError as exc:
         errors.append(f"{path.name}: {exc}")
+    check_card_fields(card, path.name, errors)
     check_payoff(card, path.name, errors)
     return target
 

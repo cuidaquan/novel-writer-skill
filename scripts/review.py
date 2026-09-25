@@ -360,23 +360,30 @@ def body_findings(chapter: Chapter) -> list[Finding]:
             )
         )
 
+    forbidden_sources: list[tuple[list, str, str]] = []
     style = chapter.novel.get("style")
-    forbidden = style.get("forbidden") if isinstance(style, dict) else None
-    if isinstance(forbidden, list):
-        for item in forbidden:
+    if isinstance(style, dict) and isinstance(style.get("forbidden"), list):
+        forbidden_sources.append((style["forbidden"], "novel.yaml style.forbidden", "forbidden-expression"))
+    card_forbidden = chapter.card.get("forbidden")
+    if isinstance(card_forbidden, list):
+        card_label = chapter.card_path.name if chapter.card_path is not None else "control card"
+        forbidden_sources.append((card_forbidden, f"{card_label} forbidden", "card-forbidden"))
+    for items, source, check in forbidden_sources:
+        for item in items:
             if not isinstance(item, str) or not item.strip():
                 continue
             index = text.find(item)
-            if index >= 0:
-                line = text.count("\n", 0, index) + 1
-                findings.append(
-                    Finding(
-                        "NOTE", "forbidden-expression", path, line,
-                        f"matches forbidden expression {item!r}",
-                        "novel.yaml style.forbidden lists this expression",
-                        "revise it unless the match is intentional.",
-                    )
+            if index < 0:
+                continue
+            line = text.count("\n", 0, index) + 1
+            findings.append(
+                Finding(
+                    "NOTE", check, path, line,
+                    f"matches forbidden expression {item!r}",
+                    f"{source} lists this expression",
+                    "revise it unless the match is intentional.",
                 )
+            )
 
     findings.extend(knowledge_findings(chapter))
     return findings

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import review
 from modules import module_paths
-from planning import check_payoff, check_plan, payoff_groups
+from planning import ENDING_MODES, check_card_fields, check_payoff, check_plan, payoff_groups
 from prose_metrics import count_words
 from project_yaml import ProjectYAMLError, read_yaml
 from state_model import integer, nonempty, read_json, validate_state
@@ -161,7 +161,14 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
             module_paths(novel, card)
         except ValueError as exc:
             errors.append(f"{card_path.name}: {exc}")
+        check_card_fields(card, card_path.name, errors)
         check_payoff(card, card_path.name, errors)
+        ending = card.get("ending")
+        if isinstance(ending, dict) and nonempty(ending.get("mode")) and ending["mode"] not in ENDING_MODES:
+            warnings.append(
+                f"{card_path.name}: ending.mode {ending['mode']!r} is not one of the documented modes "
+                f"{sorted(ENDING_MODES)}; keep it if the project defines its own convention"
+            )
         if card.get("chapter") != number:
             errors.append(f"{card_path.name}: chapter field must be {number}")
         if number <= current and nonempty(card.get("title")) and tx.get("chapter_title") != card["title"]:

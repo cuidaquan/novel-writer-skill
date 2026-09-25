@@ -60,6 +60,8 @@ ending:
 
 `payoff` 是可选字段，记录本章承诺给读者的类型回报：`expected` 写预期回报，`status` 取 `fulfilled`、`deferred` 或 `dropped`，延后或放弃时必须写 `reason`；可选的 `id` 让同一承诺在后续章节被认领（否则按 `expected` 完全相同分组）。完结校验只对“最后一次声明仍为 deferred”的承诺组报错，`dropped` 视为作者已明确放弃。它用于阶段回顾，不给所有题材套固定节奏；见 [题材与类型系统](genre-system.md)。
 
+字段分三类：【脚本】由写前检查与 `project_check.py` 校验结构、类型与 id 存在；【人工】语义兑现由作者核对；【上下文】只随上下文提供。`scenes`、`required_facts`、`ending` 的兑现属于人工核对；`forbidden` 命中会给 NOTE，但不阻断提交。
+
 如果无法回答第 3 个问题，先检查该章是否只是重复信息、过渡或无后果的展示。
 
 ## 写作中的偏离
