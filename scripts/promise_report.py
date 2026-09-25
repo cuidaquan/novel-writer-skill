@@ -12,7 +12,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from planning import numbered_path
+from planning import numbered_path, payoff_groups
 from project_yaml import ProjectYAMLError, read_yaml
 from state_model import last_touched_chapters, read_json, validate_state
 from state_rebuild import transaction_paths
@@ -116,11 +116,25 @@ def main() -> int:
             if payoff is None:
                 continue
             detail = f" - {payoff.get('expected', '')}"
-            if payoff.get("status") == "deferred" and payoff.get("reason"):
+            if payoff.get("status") in {"deferred", "dropped"} and payoff.get("reason"):
                 detail += f" (reason: {payoff.get('reason')})"
             print(f"- chapter {number}: {payoff.get('status', '')}{detail}")
     else:
         print("(no card declares payoff.expected)")
+    print()
+
+    groups = payoff_groups(project, current)
+    print("## Promise groups")
+    if groups:
+        for _, entries in groups:
+            chapter, payoff = entries[-1]
+            label = payoff.get("id") or payoff.get("expected")
+            note = ""
+            if payoff.get("status") in {"deferred", "dropped"} and payoff.get("reason"):
+                note = f" (reason: {payoff.get('reason')})"
+            print(f"- {label}: {payoff.get('status')} at chapter {chapter}; declared {len(entries)} time(s){note}")
+    else:
+        print("(no payoff declared)")
     print()
 
     streak = 0

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import review
 from modules import module_paths
-from planning import check_payoff, check_plan
+from planning import check_payoff, check_plan, payoff_groups
 from prose_metrics import count_words
 from project_yaml import ProjectYAMLError, read_yaml
 from state_model import integer, nonempty, read_json, validate_state
@@ -252,6 +252,15 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
         for name, item in mapping(state.get("foreshadowing")).items():
             if isinstance(item, dict) and item.get("status", "planted") in {"planted", "active"}:
                 errors.append(f"unresolved foreshadowing: {name}")
+        for _, entries in payoff_groups(project, current):
+            chapter, payoff = entries[-1]
+            if payoff.get("status") != "deferred":
+                continue
+            label = payoff.get("id") or payoff.get("expected")
+            errors.append(
+                f"unfulfilled genre payoff at completion: chapter {chapter} still defers {label!r}; "
+                "fulfil it or record status dropped with a reason"
+            )
     return errors, warnings, stats
 
 

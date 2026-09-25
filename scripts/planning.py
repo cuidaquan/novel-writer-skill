@@ -25,7 +25,7 @@ BOOK_FIELDS = (
 )
 STAGE_FIELDS = ("阶段目标", "主冲突", "阶段末变化", "下一阶段压力")
 PLACEHOLDERS = {"待定", "未定", "TODO", "TBD", "角色名", "未命名小说"}
-PAYOFF_STATUS = {"fulfilled", "deferred"}
+PAYOFF_STATUS = {"fulfilled", "deferred", "dropped"}
 
 
 def filled(value: object) -> bool:
@@ -54,11 +54,46 @@ def check_payoff(card: dict, label: str, errors: list[str]) -> None:
         return
     if not filled(payoff.get("expected")):
         errors.append(f"{label}: fill payoff.expected")
+    identifier = payoff.get("id")
+    if identifier is not None and not filled(identifier):
+        errors.append(f"{label}: payoff.id must be a non-empty string when present")
     status = payoff.get("status")
     if status not in PAYOFF_STATUS:
         errors.append(f"{label}: payoff.status must be one of {sorted(PAYOFF_STATUS)}")
-    if status == "deferred" and not filled(payoff.get("reason")):
-        errors.append(f"{label}: fill payoff.reason when payoff.status is deferred")
+    if status in {"deferred", "dropped"} and not filled(payoff.get("reason")):
+        errors.append(f"{label}: fill payoff.reason when payoff.status is {status}")
+
+
+def payoff_key(payoff: dict) -> str:
+    """Group a promise by payoff.id, falling back to the exact expected text."""
+    identifier = payoff.get("id")
+    if isinstance(identifier, str) and identifier.strip():
+        return f"id:{identifier.strip()}"
+    expected = payoff.get("expected")
+    if isinstance(expected, str) and expected.strip():
+        return f"expected:{expected.strip()}"
+    return ""
+
+
+def payoff_groups(project: Path, current: int) -> list[tuple[str, list[tuple[int, dict]]]]:
+    """Return promise groups in first-declaration order: (key, [(chapter, payoff)])."""
+    groups: dict[str, list[tuple[int, dict]]] = {}
+    for number in range(1, current + 1):
+        path = numbered_path(project / "control-cards", "chapter", number, ("yaml", "yml"))
+        if path is None:
+            continue
+        try:
+            card = read_yaml(path)
+        except (OSError, ProjectYAMLError):
+            continue
+        payoff = card.get("payoff") if isinstance(card, dict) else None
+        if not isinstance(payoff, dict):
+            continue
+        key = payoff_key(payoff)
+        if not key:
+            continue
+        groups.setdefault(key, []).append((number, payoff))
+    return [(key, entries) for key, entries in sorted(groups.items(), key=lambda item: item[1][0][0])]
 
 
 def numbered_path(directory: Path, prefix: str, number: int, extensions: tuple[str, ...]) -> Path | None:

@@ -103,6 +103,8 @@ class ProjectFixture(unittest.TestCase):
         revelations: dict | None = None,
         relationships: dict | None = None,
         secondary: str = "",
+        target_chapters: int = 12,
+        target_words: int = 5000,
     ) -> Path:
         project = Path(self.temp.name) / name
         run_script("init_novel.py", project, "--title", name)
@@ -112,8 +114,8 @@ class ProjectFixture(unittest.TestCase):
         if secondary:
             novel = novel.replace("secondary: []", f"secondary: [{secondary}]")
         novel = novel.replace("viewpoint_characters: []", "viewpoint_characters: [hero]")
-        novel = novel.replace("target_words: null", "target_words: 5000")
-        novel = novel.replace("target_chapters: null", "target_chapters: 12")
+        novel = novel.replace("target_words: null", f"target_words: {target_words}")
+        novel = novel.replace("target_chapters: null", f"target_chapters: {target_chapters}")
         novel_path.write_text(novel, encoding="utf-8")
         (project / "characters" / "hero.yaml").write_text(
             "id: hero\nname: 主角\ncore:\n  desire: 找真相\n  fear: 失去线索\n", encoding="utf-8"
@@ -244,6 +246,100 @@ class PromiseReport(ProjectFixture):
         result = run_script("build_context.py", project, "--chapter", 1, ok=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("fill payoff.reason", result.stderr)
+
+
+class PromiseSettlement(ProjectFixture):
+    """v1.1: deferred promises must be settled by completion; dropped is explicit."""
+
+    DEFERRED = "payoff:\n  id: key-clue\n  expected: 给出钥匙的线索\n  status: deferred\n  reason: 先处理证人\n"
+
+    def cards_for(self, extra: dict[int, str]) -> dict[int, str]:
+        return {number: card_text(number, payoff=extra.get(number, "")) for number in range(1, 6)}
+
+    def five_chapter_project(self, name: str, extra: dict[int, str]) -> Path:
+        texts = {number: f"# 第{number}章\n\n" + "\n\n".join(LONG_LINES) + "\n" for number in range(1, 6)}
+        return self.build(
+            name,
+            "mystery",
+            texts,
+            0,
+            cards=self.cards_for(extra),
+            target_chapters=5,
+            target_words=1500,
+        )
+
+    def commit_all(self, project: Path, count: int = 5) -> None:
+        for number in range(1, count + 1):
+            tx = Path(self.temp.name) / f"{project.name}-tx-{number}.json"
+            tx.write_text(
+                json.dumps(
+                    {
+                        "expected_chapter": number - 1,
+                        "chapter": number,
+                        "chapter_title": f"第{number}章",
+                        "summary": f"第{number}章推进。",
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            run_script("state_commit.py", project / "state" / "state.json", tx)
+
+    def test_resolved_promise_passes_completion(self) -> None:
+        project = self.five_chapter_project(
+            "resolved",
+            {
+                2: self.DEFERRED,
+                5: "payoff:\n  id: key-clue\n  expected: 让主角拿到钥匙线索\n  status: fulfilled\n",
+            },
+        )
+        self.commit_all(project)
+        run_script("project_check.py", project, "--complete")
+
+    def test_open_promise_fails_completion(self) -> None:
+        project = self.five_chapter_project("open", {2: self.DEFERRED})
+        self.commit_all(project)
+        result = run_script("project_check.py", project, "--complete", ok=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("unfulfilled genre payoff at completion", result.stdout)
+        self.assertIn("chapter 2", result.stdout)
+
+    def test_dropped_promise_is_an_explicit_settlement(self) -> None:
+        project = self.five_chapter_project(
+            "dropped",
+            {
+                2: self.DEFERRED,
+                4: "payoff:\n  id: key-clue\n  expected: 给出钥匙的线索\n  status: dropped\n  reason: 主线改走账本\n",
+            },
+        )
+        self.commit_all(project)
+        run_script("project_check.py", project, "--complete")
+        report = run_script("promise_report.py", project).stdout
+        self.assertIn("dropped at chapter 4", report)
+
+    def test_grouping_falls_back_to_expected_text(self) -> None:
+        project = self.five_chapter_project(
+            "fallback",
+            {
+                2: "payoff:\n  expected: 给出钥匙的线索\n  status: deferred\n  reason: 先处理证人\n",
+                5: "payoff:\n  expected: 给出钥匙的线索\n  status: fulfilled\n",
+            },
+        )
+        self.commit_all(project)
+        run_script("project_check.py", project, "--complete")
+
+    def test_dropped_without_reason_is_rejected(self) -> None:
+        project = self.build(
+            "baddrop",
+            "mystery",
+            {1: "# 第一章\n\n" + "\n\n".join(LONG_LINES) + "\n"},
+            0,
+            cards={1: card_text(1, payoff="payoff:\n  id: x\n  expected: 给出线索\n  status: dropped\n")},
+        )
+        result = run_script("project_check.py", project, ok=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("fill payoff.reason when payoff.status is dropped", result.stdout)
 
 
 if __name__ == "__main__":
