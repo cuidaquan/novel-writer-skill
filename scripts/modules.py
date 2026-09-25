@@ -10,6 +10,25 @@ REFERENCE_ROOT = Path(__file__).resolve().parents[1] / "references"
 MODULE_ID = re.compile(r"[a-z][a-z0-9-]*\Z")
 
 
+def genre_module_status(novel: dict) -> tuple[list[str], list[str]]:
+    """Return (genre ids with a module, genre ids on the generic path)."""
+    genre = novel.get("genre") or {}
+    if not isinstance(genre, dict):
+        raise ValueError("novel.yaml genre must be a mapping")
+    secondary = genre.get("secondary", [])
+    if not isinstance(secondary, list):
+        raise ValueError("novel.yaml genre.secondary must be a list")
+    ids: list[str] = []
+    for genre_id in [genre.get("primary"), *secondary]:
+        if not isinstance(genre_id, str) or not MODULE_ID.fullmatch(genre_id):
+            raise ValueError(f"invalid genre module id: {genre_id!r}")
+        if genre_id not in ids:
+            ids.append(genre_id)
+    present = [genre_id for genre_id in ids if (REFERENCE_ROOT / "genres" / f"{genre_id}.md").is_file()]
+    missing = [genre_id for genre_id in ids if genre_id not in present]
+    return present, missing
+
+
 def module_paths(novel: dict, card: dict) -> list[Path]:
     genre = novel.get("genre") or {}
     if not isinstance(genre, dict):

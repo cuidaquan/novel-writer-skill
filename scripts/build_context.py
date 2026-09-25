@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 
 import prose_metrics
-from modules import module_paths
+from modules import genre_module_status, module_paths
 from planning import check_plan
 from project_yaml import ProjectYAMLError, read_yaml
 from state_model import last_touched_chapters, read_json, validate_state
@@ -315,6 +315,7 @@ def main() -> int:
         if not isinstance(novel_data, dict):
             raise ValueError("novel.yaml must be a mapping")
         selected_modules = module_paths(novel_data, card_data)
+        present_genres, missing_genres = genre_module_status(novel_data)
     except (ProjectYAMLError, ValueError) as exc:
         raise SystemExit(str(exc)) from exc
     refs = card_data.get("context") or {}
@@ -442,6 +443,10 @@ def main() -> int:
             f"- World entries: {', '.join(world_names) if world_names else 'none'}",
             f"- State view: {'compact' if args.compact_state else 'full'}",
         ]
+        genre_note = ", ".join(present_genres) if present_genres else "none"
+        if missing_genres:
+            genre_note += f"; no module for: {', '.join(missing_genres)} (generic path)"
+        manifest.append(f"- Genre modules: {genre_note}")
         override = card_data.get("style_override") if isinstance(card_data.get("style_override"), dict) else {}
         if override:
             manifest.append("- Style override: " + ", ".join(f"{key}={value}" for key, value in sorted(override.items())))
