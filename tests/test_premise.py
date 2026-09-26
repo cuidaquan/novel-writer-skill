@@ -201,6 +201,19 @@ class BriefCheck(PremiseFixture):
         self.assertEqual(result.returncode, 0)
         self.assertIn("PASS: the premise is locked", result.stdout)
 
+    def test_standalone_draft_can_be_checked_before_the_project_exists(self) -> None:
+        draft = self.root / "draft.yaml"
+        draft.write_text(VALID_PREMISE.replace("  hard_limits:\n    - \"不写性器官、性行为过程的细节与体液\"\n    - \"性行为只发生在私密空间\"\n", "  hard_limits: []\n"), encoding="utf-8")
+        result = run_script("brief_check.py", draft, ok=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("standalone draft", result.stdout)
+        self.assertIn("intimacy.hard_limits", result.stdout)
+
+    def test_standalone_draft_passes_when_settled(self) -> None:
+        result = run_script("brief_check.py", self.premise_file)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("PASS (draft)", result.stdout)
+
     def test_missing_premise_is_a_usage_error(self) -> None:
         project = self.root / "empty"
         run_script("init_novel.py", project)

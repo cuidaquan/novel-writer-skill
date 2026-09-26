@@ -59,6 +59,8 @@ python3 scripts/init_novel.py <新项目目录> --from-premise premise.yaml
 
 # 校验：未决项、自相矛盾、与 novel.yaml 不一致、改动没记录 —— 都会 BLOCK
 python3 scripts/brief_check.py <项目目录>
+# 提案阶段项目还没建，可以直接查草稿（只判写全与自相矛盾）
+python3 scripts/brief_check.py proposal.yaml
 
 # 记录一轮（作者的原话逐字进 input）
 python3 scripts/premise_log.py <项目目录> --record "尺度升到 frank" --input "小说尺度可以再大一些"

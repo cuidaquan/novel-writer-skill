@@ -36,7 +36,11 @@ def parse_args() -> argparse.Namespace:
             "the locked decisions."
         )
     )
-    parser.add_argument("project", type=Path, help="Novel project directory")
+    parser.add_argument(
+        "project", type=Path,
+        help="Novel project directory, or a premise.yaml file to check on its own "
+             "(during the intake the project does not exist yet)",
+    )
     return parser.parse_args()
 
 
@@ -205,6 +209,30 @@ def check_recorded(project: Path, premise: dict[str, Any], findings: list[tuple[
                  f"已改动但没有对应轮次（记录 {recorded} / 当前 {current}）；先 premise_log.py --record")
 
 
+def render_standalone(premise_file: Path, premise: dict[str, Any], findings: list[tuple[str, str, str]]) -> str:
+    blocking_findings = [item for item in findings if item[0] == "BLOCK"]
+    notes = [item for item in findings if item[0] == "NOTE"]
+    lines = [
+        "# Premise Check (standalone draft): " + str(premise.get("project") or premise_file.stem),
+        "",
+        f"- Draft: {premise_file}",
+        f"- Chapters/words: {field_value(premise, 'length.target_chapters')} / {field_value(premise, 'length.target_words')}",
+        "",
+        "记录与配置一致性要等项目存在之后才检查；这份只判决策是否写全、是否自相矛盾。",
+        "",
+        f"## Blocking ({len(blocking_findings)})",
+    ]
+    lines += [f"- [{label}] {message}" for _, label, message in blocking_findings] or ["(none)"]
+    lines += ["", f"## Advisory ({len(notes)})"]
+    lines += [f"- [{label}] {message}" for _, label, message in notes] or ["(none)"]
+    lines += ["", "## Result"]
+    lines.append(
+        f"FAIL: {len(blocking_findings)} blocking finding(s); settle them before creating the project."
+        if blocking_findings else "PASS (draft): decisions are settled enough to create the project."
+    )
+    return "\n".join(lines) + "\n"
+
+
 def render(project: Path, premise: dict[str, Any], findings: list[tuple[str, str, str]]) -> str:
     blocking_findings = [item for item in findings if item[0] == "BLOCK"]
     notes = [item for item in findings if item[0] == "NOTE"]
@@ -238,7 +266,23 @@ def render(project: Path, premise: dict[str, Any], findings: list[tuple[str, str
 
 def main() -> int:
     args = parse_args()
-    project = args.project.expanduser().resolve()
+    target = args.project.expanduser().resolve()
+    if target.is_file():
+        # Standalone draft: the intake happens before the project exists.
+        try:
+            premise = read_yaml(target)
+        except ProjectYAMLError as error:
+            print(f"ERROR: {error}")
+            return 2
+        if not isinstance(premise, dict) or not premise:
+            print(f"ERROR: {target} is not a premise mapping")
+            return 2
+        findings: list[tuple[str, str, str]] = []
+        check_required(premise, findings)
+        check_consistency(premise, findings)
+        print(render_standalone(target, premise, findings))
+        return 1 if any(item[0] == "BLOCK" for item in findings) else 0
+    project = target
     if not project.is_dir():
         print(f"ERROR: project directory not found: {project}")
         return 2
