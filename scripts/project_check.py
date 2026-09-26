@@ -11,11 +11,13 @@ import review
 from modules import module_paths
 from planning import (
     ENDING_MODES,
+    PREMISE_HINT,
     boundary_errors,
     check_card_fields,
     check_payoff,
     check_plan,
     payoff_groups,
+    premise_missing,
 )
 from prose_metrics import count_words
 from project_yaml import ProjectYAMLError, read_yaml
@@ -322,13 +324,17 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--complete", action="store_true", help="Require every planned chapter, word target and resolved plot")
     mode.add_argument("--preflight", choices=("book", "serial"), help="Check the plan before writing a full book or the next serial chapter")
+    parser.add_argument("--require-premise", action="store_true",
+                        help="With --preflight book: refuse to start without a locked, recorded premise.yaml")
     args = parser.parse_args()
     project = args.project.expanduser().resolve()
     errors, warnings, stats = check(project, args.complete)
     if args.preflight:
         # Report plan gaps in the same pass as structural errors so a broken
         # project does not have to be fixed one layer per run.
-        errors.extend(check_plan(project, args.preflight))
+        errors.extend(check_plan(project, args.preflight, require_premise=args.require_premise))
+        if args.preflight == "book" and not args.require_premise and premise_missing(project):
+            print("NOTE: " + PREMISE_HINT.format(project=project))
         errors = list(dict.fromkeys(errors))
         warnings = list(dict.fromkeys(warnings))
     for warning in warnings:

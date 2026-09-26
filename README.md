@@ -30,6 +30,8 @@
 - 支持悬疑、惊悚、言情、奇幻、仙侠、科幻、历史、都市等题材，也允许组合。
 - 内容边界（`audience`、`content_limits`、`style.forbidden`）的形状由校验脚本检查，并随每章上下文清单一起输出；成年向项目未声明边界时清单直接标注。
 - `duplicates.py` 把全书与自身比对，报出逐字重复的段落/句子、近似句与重复短语；框架句和母题会被列出但标注为可接受的创作选择。
+- `premise_log.py` 把立项讨论记成追加型日志（每轮含作者原话、字段级变更、连带影响与哈希），支持 `--list/--show/--diff/--verify/--restore`。
+- `brief_check.py` 校验立项书：未决项、自相矛盾、与 `novel.yaml` 不一致、改动没有对应轮次都会 BLOCK。
 - `timeline_audit.py` 按章抽出作息与时刻，把固定安排与一次性时刻分开，并提示同一场景内倒序的时刻；它只负责把依赖句排出来，是否互斥要人判断。
 - 改稿时按结构、人物、对话、描写、语言和连续性的顺序检查。
 
@@ -45,7 +47,8 @@ third-person limited POV, high dialogue density, and low exposition density.
 ## 按工作模式的最短路径
 
 - **短篇正文**：用户只要正文时直接写，不必建项目；需要文件化时可建单章项目走整本流程。
-- **中篇/新书整本**：要求完整故事或项目文件时都按整本处理：`init_novel.py` → 填 `novel.yaml`、总纲与章卡 → `project_check.py --preflight book` → 每章 `build_context.py` → 写正文 → `review_chapter.py` → `state_commit.py`（未放行的 BLOCK 会拒绝提交）→ `project_check.py`，阶段复盘用 `stage_review.py` 汇总，最后 `--complete`。
+- **立项访谈**：作者只有一句话或方向未定时，先按 [提案式立项](references/premise-proposal.md) 给一版完整决策提案，按轮次收敛后落成 `premise.yaml`；每轮用 [决策版本记录](references/premise-versioning.md) 记账，`brief_check.py` 校验，`--preflight book --require-premise` 作为开写闸门。
+- **中篇/新书整本**：要求完整故事或项目文件时都按整本处理：立项书锁定后 `init_novel.py --from-premise` → 总纲与章卡 → `project_check.py --preflight book` → 每章 `build_context.py` → 写正文 → `review_chapter.py` → `state_commit.py`（未放行的 BLOCK 会拒绝提交）→ `project_check.py`，阶段复盘用 `stage_review.py` 汇总，最后 `--complete`。 → 填 `novel.yaml`、总纲与章卡 → `project_check.py --preflight book` → 每章 `build_context.py` → 写正文 → `review_chapter.py` → `state_commit.py`（未放行的 BLOCK 会拒绝提交）→ `project_check.py`，阶段复盘用 `stage_review.py` 汇总，最后 `--complete`。
 - **连载续写**：确认当前阶段纲后 `project_check.py --preflight serial` → `build_context.py --compact-state` → 写正文 → `review_chapter.py` → `state_commit.py` → `project_check.py`；阶段回顾加 `handoff_report.py` 与 `promise_report.py`。
 - **改稿/审稿**：先 `review_chapter.py`（必要时 `--style`）与 `style_report.py`，再按 [改稿顺序](references/revision-quality.md) 人工核对；步骤见 [写后审查](references/post-draft-review.md)。
 - **改稿后自查**：按 [改稿残句自查表](references/revision-leftovers.md) 过一遍改动处前后各一段（八类残句），再 `duplicates.py` 全书比对一遍（重点看逐字重复的段落与句子，框架句与母题按提示保留），再 `timeline_audit.py` 把作息与时刻排出来，逐条核对「这个点该谁在场」。

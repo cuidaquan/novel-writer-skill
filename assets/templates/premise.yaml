@@ -1,0 +1,79 @@
+# 立项书（premise）：写正文之前先把决策定下来。
+# 流程与提问模板见 references/premise-proposal.md；轮次记录见 references/premise-versioning.md。
+# 校验：python3 scripts/brief_check.py <项目目录>   （未决项与自相矛盾会 BLOCK）
+# 记录：python3 scripts/premise_log.py <项目目录> --record "初始提案" [--input "用户原话"]
+
+schema_version: 1
+project: 未命名小说
+version: 1                     # premise_log 每记录一轮会自增
+rounds: 0                      # 已记录的决策轮数
+status: draft                  # draft → locked（开写前置；锁后改动必须新开一轮并写理由）
+locked_at: ""
+
+delivery: book                 # book | serial
+length:
+  target_chapters: 待定
+  target_words: 待定
+
+genre:
+  primary: 待定
+  secondary: []
+  audience: 待定
+
+narration:
+  pov: 待定                    # 例：first-person retrospective
+  tense: past
+  viewpoint_characters: []
+  now: 待定                    # 叙述者的“现在”在什么时刻
+
+intimacy:
+  tier: 待定                   # fade | sensual | frank
+  hard_limits: []              # frank 级必须写清硬边界
+
+style:
+  tone: 待定
+  sentence_length: short-to-medium
+  dialogue_density: high
+  exposition_density: low
+  sensory_detail: high
+  metaphor_density: low
+  humor: restrained
+  ending_mode: 待定
+  forbidden: []                # 至少一条；这里写的会与 novel.yaml 对齐校验
+
+world:
+  mode: 待定                   # real | invented
+  research_level: 待定         # low | medium | high
+  must_be_verifiable: []       # 必须可核的事实（日出日落、车程、票价…）
+  build_before_writing: []     # 动笔前要建好的资料文件
+
+cast: []
+# cast:
+#   - id: protagonist-id
+#     role: protagonist
+#     want: 待定
+#     flaw: 待定
+#     change: 待定
+#   - id: counterpart-id
+#     role: counterpart
+#     want: 待定
+#     avoid: []                # 这个人物绝不做的行为
+
+arc:
+  turns: []
+# turns:
+#   - {chapter: 4, change: 待定}   # 每次主线或关系状态变化一行，章号递增
+
+revelations: []
+# revelations:
+#   - {id: r-xxx, truth: 待定, reader_known_at: 待定, known_by: []}
+
+frame:
+  opening_image: 待定
+  closing_image: 待定
+  promises: []                 # 对读者的承诺（类型回报、必须兑现的东西）
+
+must_include: []               # 必须出现的场景或元素
+must_avoid: []                 # 绝不出现的东西
+unresolved: []                 # 有意悬置、不打算交代的
+agent_added: []                # 提案方替你补的决策（列在这里，方便逐条否决）

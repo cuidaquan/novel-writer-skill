@@ -290,7 +290,51 @@ def world_exists(project: Path, name: str) -> bool:
     return any(path.is_file() for path in (candidate, candidate.with_suffix(".md"), candidate.with_suffix(".yaml"), candidate.with_suffix(".yml")))
 
 
-def check_plan(project: Path, mode: str, chapter: int | None = None, state_path: Path | None = None) -> list[str]:
+PREMISE_HINT = (
+    "premise.yaml missing: the decisions-first intake (references/premise-proposal.md) removes "
+    "most revision rounds; run it, then record: "
+    'python3 scripts/premise_log.py {project} --record "初始提案" --lock'
+)
+
+
+def premise_missing(project: Path) -> bool:
+    return not (project / "premise.yaml").is_file()
+
+
+def premise_errors(project: Path, require: bool = False) -> list[str]:
+    """Decisions-first gate: a book cannot start before its premise is settled.
+
+    The premise must be complete, self-consistent, consistent with novel.yaml,
+    recorded in history/log.jsonl and locked. Everything it reports is the same
+    finding brief_check.py prints, so the two commands never disagree.
+    """
+    from brief_check import check_against_novel, check_consistency, check_recorded, check_required
+    from premise import load_premise
+
+    try:
+        premise = load_premise(project)
+    except ProjectYAMLError as exc:
+        return [str(exc)]
+    if premise is None:
+        # Adopting the intake is opt-in for existing projects: a missing premise
+        # is a hint unless the caller asks for the guarantee, but once a premise
+        # exists it must stay complete, recorded and locked.
+        return [PREMISE_HINT.format(project=project)] if require else []
+    if not premise:
+        return ["premise.yaml is empty"]
+    findings: list[tuple[str, str, str]] = []
+    check_required(premise, findings)
+    check_consistency(premise, findings)
+    check_against_novel(project, premise, findings)
+    check_recorded(project, premise, findings)
+    errors = [f"premise.yaml: {message}" for level, _label, message in findings if level == "BLOCK"]
+    if premise.get("status") != "locked":
+        errors.append('premise.yaml: status is draft; settle the decisions, then re-record with --lock')
+    return errors
+
+
+def check_plan(project: Path, mode: str, chapter: int | None = None, state_path: Path | None = None,
+               require_premise: bool = False) -> list[str]:
     """Check book, serial, or next-chapter readiness without judging prose quality."""
     if mode not in {"book", "serial", "chapter"}:
         raise ValueError(f"unknown planning mode: {mode}")
@@ -306,6 +350,8 @@ def check_plan(project: Path, mode: str, chapter: int | None = None, state_path:
         errors.append("novel.yaml schema_version must be 1")
     errors.extend(boundary_errors(novel))
     errors.extend(validate_state(state))
+    if mode == "book":
+        errors.extend(premise_errors(project, require=require_premise))
     if errors:
         return errors
     if not filled(novel.get("title")):

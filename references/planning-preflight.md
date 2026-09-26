@@ -4,6 +4,10 @@
 
 按 [总纲模板](../assets/templates/outline.md) 保留字段标签并填写内容；这些标签供确定性写前检查识别。POV 人物文件至少写明名字、欲望和恐惧。每张准备写的章卡应有具体目标、阻力、至少一项剧情/人物/关系变化和目标字数。字数是规划预算，不代替写作后的正文检查。
 
+## 前置：立项书
+
+整本创作的 `--preflight book` 会读 `premise.yaml`：缺它时打印一行提示（既有项目不受影响），存在时则要求它完整、已记录在 `history/log.jsonl`、状态为 `locked`、且与 `novel.yaml` 一致，否则报错。要把它变成硬闸门就加 `--require-premise`。细节见 [提案式立项](premise-proposal.md) 与 [决策版本记录](premise-versioning.md)。
+
 ## 整本创作
 
 在 `novel.yaml` 写入 `length.target_chapters` 和 `length.target_words`，填完总纲及所有计划章节卡后运行：

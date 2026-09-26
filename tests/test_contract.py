@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LINK_PATTERN = re.compile(r"\]\(([^)#]+\.md)\)")
 MODE_MARKERS = [
+    "立项访谈（写之前）",
     "短篇正文",
     "新建项目或整本小说",
     "续写章节",

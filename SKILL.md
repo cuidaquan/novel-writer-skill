@@ -11,6 +11,7 @@ description: Create, continue, or revise fiction projects—especially novels an
 
 - **短篇正文**：按 [references/workflow.md](references/workflow.md) 的轻量流程写作；用户没有要求项目文件时，直接交付正文。
 - **中篇或其他完整单本小说**：即使篇幅短于常见长篇，只要用户要完整故事或项目文件，就按整本项目处理；先读 [references/workflow.md](references/workflow.md) 与 [references/planning-preflight.md](references/planning-preflight.md)，准备完整章卡并运行 `project_check.py --preflight book`，完稿后运行 `--complete`。
+- **立项访谈（写之前）**：作者只有一句话或方向未定时，用 [提案式立项](references/premise-proposal.md) 一次给出完整决策提案，按轮次收敛后落成 `premise.yaml` ＋ `outline/brief.md`，用 [决策版本记录](references/premise-versioning.md) 记账；`brief_check.py` 校验、`init_novel.py --from-premise` 生成配置、`--preflight book --require-premise` 作为开写闸门。
 - **新建项目或整本小说**：先读 [references/workflow.md](references/workflow.md) 与 [references/planning-preflight.md](references/planning-preflight.md)；要求完整成书时还须读 [references/full-book-workflow.md](references/full-book-workflow.md)，按章推进并通过完成校验。
 - **续写章节**：先读 [references/context-assembly.md](references/context-assembly.md) 装配上下文，再读 [references/chapter-cards.md](references/chapter-cards.md)、[references/continuity-state.md](references/continuity-state.md) 与 [references/handoff-continuity.md](references/handoff-continuity.md)，用 `scripts/handoff_report.py` 查看下一章必须承接的压力。
 - **重写旧章节**：读 [references/continuity-state.md](references/continuity-state.md)，用 `scripts/state_rebuild.py` 得到旧章之前的事实快照；重写后核对、重放后续事务。
@@ -43,7 +44,7 @@ description: Create, continue, or revise fiction projects—especially novels an
 
 每章事务可用 `handoff.carry_over` 记录下一章必须承接、且仍在 `plot_threads` 或 `foreshadowing` 中活跃的条目；`scripts/handoff_report.py` 只读报告显式承接、活跃压力与长期未推进项，`project_check.py` 会核对章卡承诺是否落入事务。
 
-项目化写正文前，整本创作运行 `scripts/project_check.py <project> --preflight book`，连载创作运行 `--preflight serial`。缺项先补计划；`build_context.py` 也会检查即将写的章节。一次性短篇正文仍走轻量流程。命令失败时按 [失败恢复](references/failure-recovery.md) 处理，旧章改稿后的重放冲突见该文与 [连续性与状态事务](references/continuity-state.md)。
+项目化写正文前，整本创作运行 `scripts/project_check.py <project> --preflight book`（立项书存在时它必须完整、已记录、已锁定；缺立项书时默认只提示，加 `--require-premise` 则拒绝开写），连载创作运行 `--preflight serial`。缺项先补计划；`build_context.py` 也会检查即将写的章节。一次性短篇正文仍走轻量流程。命令失败时按 [失败恢复](references/failure-recovery.md) 处理，旧章改稿后的重放冲突见该文与 [连续性与状态事务](references/continuity-state.md)。
 
 ## 项目文件约定
 

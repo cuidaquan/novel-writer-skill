@@ -1,5 +1,18 @@
 # 小说项目工作流
 
+## 0. 立项（写之前）
+
+作者只有一句话或方向未定时，先用 [提案式立项](premise-proposal.md) 给出一版完整决策提案，按轮次收敛到双方确认，落成 `premise.yaml` 与 `outline/brief.md`，每轮用 [决策版本记录](premise-versioning.md) 记账并最终锁定。
+
+```bash
+python3 scripts/init_novel.py <新项目> --from-premise premise.yaml   # 未定完会被拒绝
+python3 scripts/brief_check.py <项目>                                # 未决/矛盾/未记录 → BLOCK
+python3 scripts/premise_log.py <项目> --record "初始提案" --input "<作者原话>"
+python3 scripts/project_check.py <项目> --preflight book --require-premise
+```
+
+立项书锁定之后才生成章卡与总纲；作者只要求正文的短篇不必走这一步。
+
 ## 一次性短篇
 
 用户只要短篇正文时，先在脑中或简短章卡里确定主角目标、阻力、转折和结局，再写正文并检查因果与视角。除非用户需要后续连载或文件化管理，不必创建完整项目骨架。

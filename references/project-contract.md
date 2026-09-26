@@ -12,6 +12,10 @@
 ```text
 novel-project/
 ├── novel.yaml
+├── premise.yaml            # 立项决策（写之前锁定；见 references/premise-proposal.md）
+├── history/
+│   ├── log.jsonl           # 追加型决策与版本日志
+│   └── snapshots/          # 每轮的完整快照
 ├── outline/master.md
 ├── outline/volumes/volume-NN.md
 ├── characters/<id>.yaml
@@ -91,6 +95,8 @@ novel-project/
 - `review_chapter.py`：逐行 `BLOCK` / `NOTE`，含文件、行号、依据与修订方向；有 `BLOCK` 退出 1，仅 `NOTE` 退出 0，输入错误退出 2。
 - `style_report.py`、`handoff_report.py`、`promise_report.py`：只读、advisory；成功退出 0，输入错误退出 2。
 - `duplicates.py`：只读、advisory；跨章比对段落、句子、近似句与重复短语，成功退出 0，输入错误退出 2。
+- `brief_check.py`：读 `premise.yaml`、`novel.yaml` 与 `history/log.jsonl`；有 BLOCK 项退 1，通过退 0，输入错误退 2。
+- `premise_log.py`：追加型决策日志；成功退 0，`--verify` 发现漂移退 1，未知轮次或输入错误退 2。
 - `timeline_audit.py`：只读、advisory；按章抽出作息与时刻、标出同场景内倒序的时刻，成功退出 0，输入错误退出 2。
 - `style_profile.py`：样本不足时输出 `INSUFFICIENT` 且退出 1；成功退出 0，输入错误退出 2。
 - `project_check.py`：有问题退出 1，否则 0；`ERROR` 为阻断，`WARN` 为提示。

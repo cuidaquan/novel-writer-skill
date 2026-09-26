@@ -2,6 +2,14 @@
 
 版本对应 .doc/roadmap-v0.6-v1.0.md 的路线。公开字段契约见 [references/project-contract.md](references/project-contract.md)。
 
+## 1.5.0
+- 新增**提案式立项**（[references/premise-proposal.md](references/premise-proposal.md)）：作者只给一句话时，一次给出十四组决策的完整提案（推荐＋理由＋备选＋连带影响，另列"提案方替你补的"与"最没把握的三项"），按轮次收敛，落成 `premise.yaml` 与 `outline/brief.md`。理由：逐题盘问把依赖关系藏起来，作者答"尺度大一点"时看不到会连带改动禁区与场景分布；对成品反应也比对问题反应准。
+- 新增**决策版本记录**（[references/premise-versioning.md](references/premise-versioning.md)）与 `scripts/premise_log.py`：`history/log.jsonl` 追加型日志，每轮记作者原话、字段级变更、连带产物与哈希；支持 `--list/--show/--diff/--verify/--restore`，回退先记安全网、再追加新基线，回退后自动复检。
+- 新增 `scripts/brief_check.py`：未决项、占位值、自相矛盾（frank 无硬边界、节拍章号越界或重复、主角缺 want/flaw/change）、与 `novel.yaml` 不一致、改动没有对应轮次——全部 BLOCK。
+- `init_novel.py --from-premise`：由立项书生成 `novel.yaml`（含按分级推导的 `content_limits`），未定完直接拒绝且不建目录；`project_check.py --preflight book` 读立项书，缺它时提示，`--require-premise` 时硬拦。
+- YAML 子集补齐两种手写形状：`- key: value` 列表映射项与内联映射 `{a: b}`，并保证 `12:30 出发`、URL 这类标量不被误读。
+- 测试从 109 增至 **143**：立项检查 11 条、决策日志 7 条、`--from-premise` 3 条、开写闸门 3 条、YAML 子集 2 条，既有回归全部保持通过（闸门默认不拦既有项目）。
+
 ## 1.4.8
 - 新增 [改稿残句自查表](references/revision-leftovers.md)：把 11 章项目里一轮通读清出的 22 处问题归成八类——重复交代、先报后演、指代悬空、相邻两段同义、时标抵消、动作重演、旧写法残留、删剩碎句。每一类给判断问句、真实例子与改法，并单列「刻意重复的反例」（框架句、母题、念头与物证、人物口头禅）。写明为什么不做成脚本规则：短的叙述性段落在同一部书里会命中 70 处合法短句。
 - 挂到两个入口：改稿清单的语言层（改完一轮后过一遍）与写后审查（改完全书后分 3—4 章一组派人细读）。
