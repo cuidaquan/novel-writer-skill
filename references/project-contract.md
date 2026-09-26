@@ -90,6 +90,7 @@ novel-project/
 
 - `review_chapter.py`：逐行 `BLOCK` / `NOTE`，含文件、行号、依据与修订方向；有 `BLOCK` 退出 1，仅 `NOTE` 退出 0，输入错误退出 2。
 - `style_report.py`、`handoff_report.py`、`promise_report.py`：只读、advisory；成功退出 0，输入错误退出 2。
+- `duplicates.py`：只读、advisory；跨章比对段落、句子、近似句与重复短语，成功退出 0，输入错误退出 2。
 - `style_profile.py`：样本不足时输出 `INSUFFICIENT` 且退出 1；成功退出 0，输入错误退出 2。
 - `project_check.py`：有问题退出 1，否则 0；`ERROR` 为阻断，`WARN` 为提示。
 - `state_commit.py`：非法事务不改动状态，退出 1；章节有未放行的 BLOCK 审查项时拒绝写入；`--allow <check> --reason <text>` 可带记录放行；成功打印提交章号。
@@ -102,6 +103,7 @@ novel-project/
 4. 项目：`project_check.py`；完结 `--complete`。章零快照非法时，事务回放降为 WARN，逐章事务检查仍按日志执行；此时不再建议重写派生快照。
 5. 连续性：`state_rebuild.py`、`handoff_report.py`。
 6. 风格与类型：`style_report.py`、`style_profile.py`、`promise_report.py`。
+7. 重复与抄袭自查：`duplicates.py`（改稿后至少跑一次；它只看字面重复）。
 
 ## 上下文预算
 
