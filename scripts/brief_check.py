@@ -251,9 +251,8 @@ def render(project: Path, premise: dict[str, Any], findings: list[tuple[str, str
     lines += [f"- [{label}] {message}" for _, label, message in notes] or ["(none)"]
     lines += ["", "## Result"]
     if any(label == "novel-drift" for _, label, _ in blocking_findings):
-        lines.append("novel.yaml 与立项书不一致：重新生成配置 "
-                     "(python3 scripts/init_novel.py <项目> --force --from-premise premise.yaml)，"
-                     "或在 novel.yaml 里同步同一处改动。")
+        lines.append("novel.yaml 与立项书不一致：用 python3 scripts/novel_from_premise.py <项目> 重新生成配置"
+                     "（不要用 init_novel --force，那会重置 state 与总纲），或在 novel.yaml 里同步同一处改动。")
     if blocking_findings:
         lines.append(f"FAIL: {len(blocking_findings)} blocking finding(s); the book cannot start until they are settled.")
     elif status != "locked":

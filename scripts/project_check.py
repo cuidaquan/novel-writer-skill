@@ -88,6 +88,17 @@ def check(project: Path, complete: bool) -> tuple[list[str], list[str], dict[str
         errors.append("novel.yaml title differs from state.project.title")
     chapters = numbered_files(project / "chapters", {"md", "txt"}, "chapter", errors)
     cards = numbered_files(project / "control-cards", {"yaml", "yml"}, "control card", errors)
+    planned = mapping(novel.get("length")).get("target_chapters")
+    if isinstance(planned, int) and planned > 0:
+        for number, path in sorted(cards.items()):
+            if number > planned:
+                message = (
+                    f"{path.name}: card for chapter {number} but length.target_chapters is {planned}; "
+                    "delete the card or raise the target"
+                )
+                # Mid-book this is usually a next-chapter draft in progress;
+                # at completion it is a leftover from an earlier plan.
+                (errors if complete else warnings).append(message)
     stats["chapters"] = len(chapters)
     try:
         journals = transaction_paths(project)

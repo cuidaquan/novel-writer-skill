@@ -116,7 +116,7 @@ def render_novel_yaml(premise: dict[str, Any]) -> str:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Initialize a novel project")
     parser.add_argument("path", type=Path, help="Destination project directory")
-    parser.add_argument("--title", default="未命名小说")
+    parser.add_argument("--title", default="", help="Defaults to the premise's project name when --from-premise is used")
     parser.add_argument("--force", action="store_true", help="Allow an existing empty directory")
     parser.add_argument("--from-premise", type=Path, metavar="PREMISE",
                         help="Generate novel.yaml from a settled premise.yaml (copied into the project)")
@@ -151,6 +151,9 @@ def main() -> int:
                 print(f"  - {message}")
             print("finish the intake (references/premise-proposal.md) first; nothing was initialized")
             return 1
+        # The premise names the book; --title still wins when given explicitly.
+        if not args.title:
+            args.title = str(checked.get("project") or "未命名小说")
 
     if target.exists():
         if any(target.iterdir()):

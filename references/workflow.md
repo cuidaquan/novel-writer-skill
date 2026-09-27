@@ -11,7 +11,15 @@ python3 scripts/premise_log.py <项目> --record "初始提案" --input "<作者
 python3 scripts/project_check.py <项目> --preflight book --require-premise
 ```
 
-立项书锁定之后才生成章卡与总纲；作者只要求正文的短篇不必走这一步。
+立项书锁定之后用 `scripts/outline_from_premise.py <项目>` 生成总纲骨架、每章章卡与人物卡：
+已由决策确定的部分（章数、变化节拍所在章、揭示时间表、视角、字数分配、禁区）自动填入，其余标「待定」并把待办清单打出来；作者改完骨架再跑 `--preflight book`。
+
+```bash
+python3 scripts/outline_from_premise.py <项目> --dry-run   # 先看会写哪些文件
+python3 scripts/outline_from_premise.py <项目>             # 骨架＋待办清单
+```
+
+作者只要求正文的短篇不必走这一步。
 
 ## 一次性短篇
 

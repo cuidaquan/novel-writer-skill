@@ -2,6 +2,14 @@
 
 版本对应 .doc/roadmap-v0.6-v1.0.md 的路线。公开字段契约见 [references/project-contract.md](references/project-contract.md)。
 
+## 1.6.0
+- 新增 `scripts/outline_from_premise.py`：由**锁定**立项书生成 `outline/master.md`（章节节奏表、揭示时间表、全书禁区、必须出现、未决问题）、每章章卡与人物卡。决策已确定的部分自动填入（章数、变化节拍所在章、揭示归属、视角、字数分配、全局禁区、结局模式、人物欲望与缺陷、`voice.avoids`），其余标「待定」，并在结尾按优先级列出**还需要作者决定什么**。
+- 三档覆盖策略：未锁定或有 BLOCK → 拒绝；文件仍是模板或与本次生成完全一致 → 直接写（可重复运行）；已经过作者编辑 → 拒绝并列出文件名，`--force` 才覆盖。另支持 `--dry-run` 与 `--words-per-chapter`。
+- 计划缩小后的残留处理：列出旧章卡/人物卡；`--prune` 只清掉没有作者内容的那些（生成器填过的字段不算作者内容），有内容的留给人工。
+- 新增 `scripts/novel_from_premise.py`：决策改动后**只重写 `novel.yaml`**。此前 `brief_check` 的提示让人用 `init_novel --force` 同步配置，那会把 state 与总纲一起重置——这是写测试时发现的真实缺陷，提示已改正。
+- `project_check.py` 增加计划外章卡检查：写作中给 WARN（通常是下一章草稿），`--complete` 时给 ERROR（旧计划残留）。
+- 测试 145 → **165**：生成器 25 条（覆盖单章/120 章/无揭示无清单/连载字段/字数分配/幂等/模板覆盖/作者内容保护/prune/门禁分级），既有回归全绿。
+
 ## 1.5.0
 - 新增**提案式立项**（[references/premise-proposal.md](references/premise-proposal.md)）：作者只给一句话时，一次给出十四组决策的完整提案（推荐＋理由＋备选＋连带影响，另列"提案方替你补的"与"最没把握的三项"），按轮次收敛，落成 `premise.yaml` 与 `outline/brief.md`。理由：逐题盘问把依赖关系藏起来，作者答"尺度大一点"时看不到会连带改动禁区与场景分布；对成品反应也比对问题反应准。
 - 新增**决策版本记录**（[references/premise-versioning.md](references/premise-versioning.md)）与 `scripts/premise_log.py`：`history/log.jsonl` 追加型日志，每轮记作者原话、字段级变更、连带产物与哈希；支持 `--list/--show/--diff/--verify/--restore`，回退先记安全网、再追加新基线，回退后自动复检。

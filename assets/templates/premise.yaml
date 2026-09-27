@@ -50,6 +50,7 @@ world:
 cast: []
 # cast:
 #   - id: protagonist-id
+#     name: 角色名                # 名字也是决策，写在这里
 #     role: protagonist
 #     want: 待定
 #     flaw: 待定

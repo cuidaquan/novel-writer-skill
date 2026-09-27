@@ -97,6 +97,8 @@ novel-project/
 - `duplicates.py`：只读、advisory；跨章比对段落、句子、近似句与重复短语，成功退出 0，输入错误退出 2。
 - `brief_check.py`：读 `premise.yaml`、`novel.yaml` 与 `history/log.jsonl`；有 BLOCK 项退 1，通过退 0，输入错误退 2。
 - `premise_log.py`：追加型决策日志；成功退 0，`--verify` 发现漂移退 1，未知轮次或输入错误退 2。
+- `novel_from_premise.py`：只重写 `novel.yaml`（不动 state 与总纲）；配置与前提不一致退 1，输入错误退 2。
+- `outline_from_premise.py`：由锁定立项书生成总纲骨架、章卡与人物卡；未锁定/有 BLOCK/会覆盖作者内容退 1，输入错误退 2。
 - `timeline_audit.py`：只读、advisory；按章抽出作息与时刻、标出同场景内倒序的时刻，成功退出 0，输入错误退出 2。
 - `style_profile.py`：样本不足时输出 `INSUFFICIENT` 且退出 1；成功退出 0，输入错误退出 2。
 - `project_check.py`：有问题退出 1，否则 0；`ERROR` 为阻断，`WARN` 为提示。

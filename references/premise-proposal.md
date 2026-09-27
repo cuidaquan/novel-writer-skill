@@ -22,7 +22,7 @@
 | 4 | 亲密尺度与禁区（fade / sensual / frank、硬边界、暴力与题材禁区） | `intimacy`、`content_limits` |
 | 5 | 风格参数（语气、句长、对话密度、感官、比喻、幽默、章末模式） | `style` |
 | 6 | 世界与考据等级（真实或架空、考据到什么程度、哪些必须可核） | `world`、是否先建 `world/` 与时间线 |
-| 7 | 人物（主角欲望/缺陷/变化、对照人物、每人"绝不做的事"） | `cast`、人物卡 |
+| 7 | 人物（**名字**、主角欲望/缺陷/变化、对照人物、每人"绝不做的事"） | `cast`、人物卡 |
 | 8 | 关系或主线的变化节拍（第几章发生第几次变化） | `arc.turns`、章卡 `change` |
 | 9 | 真相与揭示（哪些事读者何时知道、谁在何时知道） | `revelations` |
 | 10 | 首末框（开场意象、收束意象、母题） | `frame` |
@@ -40,7 +40,7 @@
 3. **提案方回变更摘要**（不是重发全文）：改了什么、**连带改了什么**、还差哪些没定。每轮通常动 2—4 组，2—4 轮收敛。
 4. **收敛判据**：没有未决项、没有自相矛盾、作者确认"这就是我们商定的"。
 5. **落盘**：`premise.yaml`（机读）＋ `outline/brief.md`（人读：决策、理由、**被否选项**）＋ 一条轮次记录。
-6. **再生成大纲**：由锁定决策生成故事大纲（logline → 人物弧 → 关系节拍 → 分章 beats → 首末框 → 揭示时间表），交作者评审；大纲定稿后才生成章卡、跑 `--preflight book`。
+6. **生成大纲骨架**：`outline_from_premise.py` 把锁定决策渲染成 `outline/master.md`（章节节奏表、揭示时间表、禁区、必须出现）、每章章卡（已知项预填，其余标「待定」）与人物卡，并列出**还需要你决定的清单**；作者改完骨架后跑 `--preflight book`。
 
 依赖传播表（改动时必须一起更新）：
 
@@ -64,6 +64,14 @@ python3 scripts/brief_check.py proposal.yaml
 
 # 记录一轮（作者的原话逐字进 input）
 python3 scripts/premise_log.py <项目目录> --record "尺度升到 frank" --input "小说尺度可以再大一些"
+
+# 决策改了之后同步配置（只重写 novel.yaml，不动 state 与总纲）
+python3 scripts/novel_from_premise.py <项目目录>
+
+# 由锁定立项书生成大纲骨架、章卡与人物卡（未锁定或有 BLOCK 会拒绝）
+python3 scripts/outline_from_premise.py <项目目录> [--dry-run] [--prune] [--force]
+#   --dry-run  只打印将写哪些文件；--prune 清掉旧计划里没有作者内容的残留；
+#   --force    覆盖你已编辑过的大纲/章卡（默认会拒绝并列出文件名）
 # 锁定
 python3 scripts/premise_log.py <项目目录> --record "确认锁定" --input "就按这版" --lock
 
