@@ -48,6 +48,7 @@ REQUIRED_FIELDS: tuple[tuple[str, str], ...] = (
     ("genre.primary", "主类型"),
     ("genre.audience", "读者定位"),
     ("narration.pov", "视角与人称"),
+    ("narration.viewpoint_characters", "视角人物（必须有对应人物卡）"),
     ("intimacy.tier", "亲密分级"),
     ("style.tone", "语气基调"),
     ("style.forbidden", "风格禁区（至少一条）"),

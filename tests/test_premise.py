@@ -157,6 +157,13 @@ class BriefCheck(PremiseFixture):
         result = run_script("brief_check.py", project, ok=False)
         self.assertIn("arc.turns", result.stdout)
 
+    def test_missing_viewpoint_characters_blocks(self) -> None:
+        premise = VALID_PREMISE.replace("  viewpoint_characters: [lin]", "  viewpoint_characters: []")
+        project = self.build_project("viewpoint")
+        (project / "premise.yaml").write_text(premise, encoding="utf-8")
+        result = run_script("brief_check.py", project, ok=False)
+        self.assertIn("narration.viewpoint_characters", result.stdout)
+
     def test_unknown_tier_blocks(self) -> None:
         premise = VALID_PREMISE.replace("  tier: frank", "  tier: 很辣")
         project = self.build_project("tier")
